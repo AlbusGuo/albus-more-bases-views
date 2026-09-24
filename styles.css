@@ -1525,6 +1525,14 @@ button.mbv-project-status-toggle:disabled { opacity: 0.55; }
 	}
 }
 
+.bases-toolbar-menu-form
+	.input-row-content:has(> input.slider[min='0'][max='1000'][step='1'])
+	> .slider-value {
+	flex: 0 0 4ch;
+	min-width: 4ch;
+	text-align: end;
+}
+
 .mbv-course-view {
 	display: flex;
 	width: 100%;
