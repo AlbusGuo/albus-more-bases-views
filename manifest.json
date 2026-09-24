@@ -1,0 +1,9 @@
+{
+	"id": "albus-more-bases-views",
+	"name": "More Bases Views",
+	"version": "3.0.0",
+	"minAppVersion": "1.10.2",
+	"description": "Extends Bases plugin with more views.",
+	"author": "Albus",
+	"isDesktopOnly": false
+}

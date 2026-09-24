@@ -1,0 +1,45 @@
+# Dependencies
+/node_modules/
+
+# Build and release artifacts
+/dist/
+/main.js
+*.mbvpack
+*.map
+*.zip
+*.tgz
+*.tsbuildinfo
+
+# Private visual assets
+/assets/
+
+# Local Obsidian plugin data
+/data.json
+
+# Local development notes and agent state
+/AGENTS.md
+/DEVELOPMENT_NOTES.md
+/Plugin guidelines.md
+/.agents/
+/.codex/
+/.tmp/
+
+# Local environment and logs
+/.env
+/.env.*
+!/.env.example
+*.log
+/coverage/
+
+# Editors
+/.vscode/
+/.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
