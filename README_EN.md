@@ -180,9 +180,9 @@ BRAT installs the standard plugin files. Card, Operator, and Hearthstone packs m
 
 ### Manual installation
 
-1. Download `main.js`, `manifest.json`, `styles.css`, `LICENSE`, `THIRD_PARTY_NOTICES.md`, and the accompanying upstream license files from [GitHub Releases](https://github.com/AlbusGuo/albus-more-bases-views/releases).
+1. Download `main.js`, `manifest.json`, and `styles.css` from [GitHub Releases](https://github.com/AlbusGuo/albus-more-bases-views/releases).
 2. Create `<Vault>/.obsidian/plugins/albus-more-bases-views/`.
-3. Copy the plugin and license files into that directory.
+3. Copy only the three primary plugin files into that directory.
 4. If you obtained authorized view packs, create a `view-packs/` subdirectory and copy the required `.mbvpack` files into it, or import them later from their views.
 5. Reload Obsidian.
 6. Enable `More Bases Views` under **Settings -> Community plugins**.
@@ -240,11 +240,6 @@ dist/
 ├─ main.js
 ├─ manifest.json
 ├─ styles.css
-├─ LICENSE
-├─ THIRD_PARTY_NOTICES.md
-├─ POKEMON_CARDS_CSS_LICENSE
-├─ OBSIDIAN_MAPS_LICENSE
-├─ MAPLIBRE_LICENSE
 └─ view-packs/                 # generated only with private assets
    ├─ card.mbvpack
    ├─ operator.mbvpack

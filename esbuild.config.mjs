@@ -1,7 +1,7 @@
 import esbuild from 'esbuild';
 import process from 'process';
 import { builtinModules } from 'node:module';
-import { copyFile, mkdir } from 'node:fs/promises';
+import { copyFile, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { lazyImagePlugin } from './build/lazy-image-plugin.mjs';
 
@@ -13,16 +13,15 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = process.argv[2] === 'production';
 const outputDirectory = path.resolve(process.argv[3] ?? 'dist');
+const defaultOutputDirectory = path.resolve('dist');
 
+if (outputDirectory === defaultOutputDirectory) {
+	await rm(outputDirectory, { recursive: true, force: true });
+}
 await mkdir(outputDirectory, { recursive: true });
 await Promise.all([
 	copyFile('manifest.json', path.join(outputDirectory, 'manifest.json')),
 	copyFile('styles.css', path.join(outputDirectory, 'styles.css')),
-	copyFile('LICENSE', path.join(outputDirectory, 'LICENSE')),
-	copyFile('THIRD_PARTY_NOTICES.md', path.join(outputDirectory, 'THIRD_PARTY_NOTICES.md')),
-	copyFile('POKEMON_CARDS_CSS_LICENSE', path.join(outputDirectory, 'POKEMON_CARDS_CSS_LICENSE')),
-	copyFile('OBSIDIAN_MAPS_LICENSE', path.join(outputDirectory, 'OBSIDIAN_MAPS_LICENSE')),
-	copyFile('MAPLIBRE_LICENSE', path.join(outputDirectory, 'MAPLIBRE_LICENSE')),
 ]);
 
 const context = await esbuild.context({

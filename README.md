@@ -180,9 +180,9 @@ BRAT 安装标准插件文件后, 卡牌, 干员和炉石拓展包仍需从获�
 
 ### 手动安装
 
-1. 从 [GitHub Releases](https://github.com/AlbusGuo/albus-more-bases-views/releases) 下载 `main.js`, `manifest.json`, `styles.css`, `LICENSE`, `THIRD_PARTY_NOTICES.md` 及随附的上游许可证文件.
+1. 从 [GitHub Releases](https://github.com/AlbusGuo/albus-more-bases-views/releases) 下载 `main.js`, `manifest.json` 和 `styles.css`.
 2. 创建 `<Vault>/.obsidian/plugins/albus-more-bases-views/`.
-3. 将插件文件与许可证文件放入该目录.
+3. 只将三个插件主文件放入该目录.
 4. 如果已经从获得授权的渠道取得拓展包, 创建 `view-packs/` 子目录并将需要的 `.mbvpack` 放入其中; 也可以稍后从对应视图导入.
 5. 重新加载 Obsidian.
 6. 在 **设置 -> 社区插件** 中启用 `More Bases Views`.
@@ -240,11 +240,6 @@ dist/
 ├─ main.js
 ├─ manifest.json
 ├─ styles.css
-├─ LICENSE
-├─ THIRD_PARTY_NOTICES.md
-├─ POKEMON_CARDS_CSS_LICENSE
-├─ OBSIDIAN_MAPS_LICENSE
-├─ MAPLIBRE_LICENSE
 └─ view-packs/                 # 仅在私有素材可用时生成
    ├─ card.mbvpack
    ├─ operator.mbvpack

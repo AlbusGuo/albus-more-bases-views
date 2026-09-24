@@ -1,6 +1,6 @@
 {
 	"name": "albus-more-bases-views",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"description": "Extends Bases plugin with more views.",
 	"main": "main.js",
 	"type": "module",

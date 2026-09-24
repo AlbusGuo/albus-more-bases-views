@@ -37,11 +37,11 @@ jobs:
                   subject-path: |
                       dist/main.js
                       dist/manifest.json
-                      dist/LICENSE
-                      dist/THIRD_PARTY_NOTICES.md
-                      dist/POKEMON_CARDS_CSS_LICENSE
-                      dist/OBSIDIAN_MAPS_LICENSE
-                      dist/MAPLIBRE_LICENSE
+                      LICENSE
+                      THIRD_PARTY_NOTICES.md
+                      POKEMON_CARDS_CSS_LICENSE
+                      OBSIDIAN_MAPS_LICENSE
+                      MAPLIBRE_LICENSE
                       ${{ steps.styles.outputs.exists == 'true' && 'dist/styles.css' || '' }}
 
             - name: Create release
@@ -54,7 +54,7 @@ jobs:
                     --title="$tag" \
                     --draft \
                     dist/main.js dist/manifest.json \
-                    dist/LICENSE dist/THIRD_PARTY_NOTICES.md \
-                    dist/POKEMON_CARDS_CSS_LICENSE \
-                    dist/OBSIDIAN_MAPS_LICENSE dist/MAPLIBRE_LICENSE \
+                    LICENSE THIRD_PARTY_NOTICES.md \
+                    POKEMON_CARDS_CSS_LICENSE \
+                    OBSIDIAN_MAPS_LICENSE MAPLIBRE_LICENSE \
                     ${{ steps.styles.outputs.exists == 'true' && 'dist/styles.css' || '' }}

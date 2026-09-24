@@ -5911,11 +5911,13 @@ button.mbv-index-row-action.is-danger:focus-visible {
 	display: flex;
 	min-width: 0;
 	flex-direction: column;
-	transform-style: preserve-3d;
+	isolation: isolate;
+	transform-style: flat;
 }
 
 .mbv-collectible-scene {
 	position: relative;
+	z-index: 1;
 	width: 100%;
 	aspect-ratio: var(--mbv-collectible-aspect);
 	transform-style: preserve-3d;
@@ -6149,6 +6151,8 @@ button.mbv-collectible-rotator {
 }
 
 .mbv-collectible-card-details {
+	position: relative;
+	z-index: 0;
 	padding: 10px 4px 0;
 }
 
@@ -8747,7 +8751,8 @@ button.mbv-collectible-rotator {
 	--mbv-collectible-scale: 1;
 	--mbv-collectible-inverse-scale: 1;
 	position: relative;
-	transform-style: preserve-3d;
+	isolation: isolate;
+	transform-style: flat;
 }
 
 .mbv-hs-card.is-opening { transition: none; }
@@ -8763,6 +8768,7 @@ button.mbv-collectible-rotator {
 
 .mbv-hs-face {
 	position: relative;
+	z-index: 1;
 	width: 100%;
 	aspect-ratio: 443 / 654;
 	border-radius: var(--radius-m);
@@ -9585,7 +9591,11 @@ button.mbv-collectible-rotator {
 	white-space: nowrap;
 }
 
-.mbv-hs-card-details { padding: 4px 8px 0; }
+.mbv-hs-card-details {
+	position: relative;
+	z-index: 0;
+	padding: 4px 8px 0;
+}
 .mbv-hs-message:empty { display: none; }
 .mbv-hs-message { padding: 4px 8px; color: var(--text-muted); font-size: var(--font-ui-smaller); }
 .modal-container .modal.mbv-hs-property-modal {
