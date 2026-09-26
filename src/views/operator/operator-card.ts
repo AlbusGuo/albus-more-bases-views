@@ -29,7 +29,6 @@ import {
 	getOperatorDetailsSignature,
 	updateOperatorDetails,
 } from './operator-properties';
-import { OperatorPropertyModal } from './operator-property-modal';
 
 
 interface OperatorArtworkPosition {
@@ -51,6 +50,8 @@ export interface OperatorCardContext {
 	assets: OperatorAssetService;
 	artworkRasterizer: OperatorArtworkRasterizer;
 	artworkWidth: number;
+	fallbackName?: string;
+	openEditor: (context: OperatorCardContext) => void;
 	contextMenuEnabled?: boolean;
 	entryOpenEnabled?: boolean;
 	pointerMotionEnabled?: boolean;
@@ -182,7 +183,6 @@ export function createOperatorCard(
 		initialContext.pointerMotionEnabled === false,
 	);
 	const elements = buildOperatorShell(cardEl, state);
-	let propertyModal: OperatorPropertyModal | null = null;
 	bindArtworkImageState(elements, state);
 	bindArtworkSwitch(elements, state);
 	bindPotentialToggle(elements, state);
@@ -198,9 +198,7 @@ export function createOperatorCard(
 		if (state.positionEditing || (event.target as Element | null)?.closest('button')) return;
 		event.preventDefault(); event.stopPropagation();
 		clearSelection();
-		propertyModal?.close();
-		propertyModal = new OperatorPropertyModal(state.context, createOperatorCard);
-		propertyModal.open();
+		state.context.openEditor(state.context);
 	});
 
 	const update = (context: OperatorCardContext): void => {
@@ -248,7 +246,6 @@ export function createOperatorCard(
 	};
 
 	const destroy = (): void => {
-		propertyModal?.close(); propertyModal = null;
 		destroyPositionEditor();
 		suspend();
 		cancelArtworkRelease(state);
@@ -552,7 +549,7 @@ function updateContent(
 	const { context } = state;
 	const name = context.options.nameProperty
 		? getPropertyText(context, context.options.nameProperty)
-		: context.entry.file.basename;
+		: context.fallbackName ?? context.entry.file.basename;
 	const code = getPropertyText(context, context.options.codeProperty);
 	const professions = getPropertyTexts(
 		context,

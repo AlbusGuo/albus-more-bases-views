@@ -3,6 +3,7 @@ import {
 	Notice,
 	Setting,
 	StringValue,
+	normalizePath,
 	parsePropertyId,
 	type BasesEntry,
 	type BasesPropertyId,
@@ -60,7 +61,11 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 	private saveChain: Promise<void> = Promise.resolve();
 	private closed = false;
 
-	constructor(private readonly context: OperatorCardContext, private readonly createCard: OperatorCardFactory) {
+	constructor(
+		private readonly context: OperatorCardContext,
+		private readonly createCard: OperatorCardFactory,
+		private readonly onClosed?: () => void,
+	) {
 		super(context.app); this.hiddenMode = context.hiddenMode;
 	}
 
@@ -78,6 +83,7 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 		this.closed = true; this.stopBadgeSwitching(); this.listControl.destroy(); this.preview?.destroy(); this.preview = null;
 		this.imageFiles = []; this.contentEl.empty();
 		void this.flushSave().finally(() => { this.original.clear(); this.dirty.clear(); });
+		this.onClosed?.();
 	}
 
 	private load(): void {
@@ -89,7 +95,10 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 		};
 		this.draft = {
 			artwork: readImageList(raw('artwork')), hiddenArtwork: readImageList(raw('hiddenArtwork')),
-			name: valueText(raw('name')), code: valueText(raw('code')),
+			name: this.context.options.nameProperty
+				? valueText(raw('name'))
+				: this.context.entry.file.basename,
+			code: valueText(raw('code')),
 			profession: readChoiceList(raw('profession')), rarity: readRarity(raw('rarity')),
 			faction: readChoiceList(raw('faction')),
 		};
@@ -99,7 +108,12 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 		const scroll = this.formEl.scrollTop; this.listControl.reset(); this.formEl.empty();
 		if (this.hiddenMode) this.addImageList('hiddenArtwork', '隐藏立绘');
 		else this.addImageList('artwork', '普通立绘');
-		this.addText('name', '姓名', '文本'); this.addText('code', '代号', '文本');
+		this.addText(
+			'name',
+			'姓名',
+			this.context.options.nameProperty ? '文本' : '文件名',
+		);
+		this.addText('code', '代号', '文本');
 		this.addProfessionList();
 		this.setting('rarity', '星级', '1-7').addDropdown((dropdown) => {
 			for (let rarity = 1; rarity <= 7; rarity++) dropdown.addOption(String(rarity), String(rarity));
@@ -190,7 +204,7 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 	}
 
 	private setting(field: OperatorField, name: string, description: string): Setting {
-		const writable = this.writableProperty(field) !== null;
+		const writable = this.isWritableField(field);
 		const setting = new Setting(this.formEl).setName(name).setDesc(writable ? description : `${description}, 未映射`)
 			.setClass(`mbv-operator-property-${field}`);
 		if (!writable) queueMicrotask(() => { setting.setDisabled(true); });
@@ -230,6 +244,7 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 		return {
 			...this.context, ownerEl: this.previewEl, entry: this.previewEntry(), hiddenMode: this.hiddenMode,
 			artworkWidth: 210,
+			fallbackName: this.draft.name,
 			contextMenuEnabled: false,
 			entryOpenEnabled: false,
 			pointerMotionEnabled: false,
@@ -267,6 +282,9 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 		for (const field of fields) this.dirty.delete(field);
 		const changes = new Map<string, { before: unknown; after: unknown }>();
 		try {
+			if (fields.includes('name') && !this.context.options.nameProperty) {
+				await this.renameFile();
+			}
 			for (const field of fields) {
 				const property = this.writableProperty(field); if (!property) continue;
 				const before = this.original.get(property), after = this.serialize(field);
@@ -282,6 +300,29 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 		}
 	}
 
+	private async renameFile(): Promise<void> {
+		const entered = this.draft.name.trim();
+		if (!entered) throw new Error('文件名不能为空.');
+		if (/[\\/:*?"<>|]/u.test(entered)) throw new Error('文件名包含无效字符.');
+		const extension = this.context.entry.file.extension
+			? `.${this.context.entry.file.extension}`
+			: '';
+		const basename = extension && entered.toLowerCase().endsWith(extension.toLowerCase())
+			? entered.slice(0, -extension.length).trim()
+			: entered;
+		if (!basename) throw new Error('文件名不能为空.');
+		if (basename === this.context.entry.file.basename) return;
+		const separator = this.context.entry.file.path.lastIndexOf('/');
+		const folder = separator >= 0
+			? this.context.entry.file.path.slice(0, separator + 1)
+			: '';
+		await this.app.fileManager.renameFile(
+			this.context.entry.file,
+			normalizePath(`${folder}${basename}${extension}`),
+		);
+		this.draft.name = basename;
+	}
+
 	private serialize(field: OperatorField): unknown {
 		if (field === 'artwork' || field === 'hiddenArtwork') {
 			return serializeList(this.draft[field], false);
@@ -294,6 +335,10 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 	}
 
 	private propertyId(field: OperatorField): BasesPropertyId | null { return this.context.options[FIELD_OPTIONS[field]]; }
+	private isWritableField(field: OperatorField): boolean {
+		return field === 'name' && !this.context.options.nameProperty ||
+			this.writableProperty(field) !== null;
+	}
 	private writableProperty(field: OperatorField): string | null {
 		const id = this.propertyId(field); if (!id) return null;
 		const parsed = parsePropertyId(id); return parsed.type === 'note' ? parsed.name : null;
