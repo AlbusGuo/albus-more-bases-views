@@ -1,19 +1,12 @@
 import {
 	Keymap,
-	Notice,
 	NullValue,
-	setIcon,
 	type App,
 	type BasesEntry,
 	type BasesPropertyId,
 	type Value,
 } from 'obsidian';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
-import {
-	getStatus,
-	openAttachment,
-	updateStatus,
-} from '../../services/entry-actions';
 import { renderBookCover } from './book-cover';
 import type { BookViewOptions } from './book-options';
 import {
@@ -21,6 +14,13 @@ import {
 	getVisibleTitle,
 	updateBookDetails,
 } from './book-properties';
+import { createReadingActions } from '../shared/reading-actions';
+
+const BOOK_READING_ACTIONS = {
+	actionClass: 'mbv-book-action',
+	attachmentClass: 'mbv-book-open-action',
+	statusClass: 'mbv-book-status-action',
+} as const;
 
 export interface BookCardContext {
 	app: App;
@@ -65,8 +65,16 @@ export function createBookCard(
 	spineEl.createDiv('mbv-book-spine-overlay');
 	const spineTitleEl = spineEl.createSpan('mbv-book-spine-title');
 
-	const attachmentButton = createAttachmentButton(frontEl, state);
-	const statusCheckbox = createStatusCheckbox(frontEl, state);
+	const actionsEl = boxEl.createDiv('mbv-book-actions');
+	const readingActions = createReadingActions(
+		actionsEl,
+		initialContext,
+		BOOK_READING_ACTIONS,
+	);
+	const actionSampleImageEl = readingActions.attachmentButton.createEl('img', {
+		cls: 'mbv-book-action-sample-image is-hidden',
+		attr: { alt: '', decoding: 'async' },
+	});
 	bindCoverLink(coverLinkEl, state);
 
 	const update = (context: BookCardContext): void => {
@@ -77,107 +85,24 @@ export function createBookCard(
 		coverLinkEl.setAttribute('href', context.entry.file.path);
 		coverLinkLabelEl.setText(`打开 "${accessibleTitle}"`);
 		spineTitleEl.setText(title);
-		updateCover(state, coverEl, spineImageEl);
+		updateCover(state, coverEl, spineImageEl, actionSampleImageEl);
 		const detailsSignature = getDetailsSignature(context);
 		if (detailsSignature !== state.detailsSignature) {
 			state.detailsSignature = detailsSignature;
 			updateBookDetails(cardEl, context);
 		}
-		updateAttachmentButton(attachmentButton, context);
-		updateStatusCheckbox(statusCheckbox, context);
+		readingActions.update(context);
 	};
 
 	update(initialContext);
 	return { element: cardEl, update };
 }
 
-function createAttachmentButton(
-	frontEl: HTMLElement,
-	state: { context: BookCardContext },
-): HTMLButtonElement {
-	const button = frontEl.createEl('button', {
-		cls: 'mbv-book-action mbv-book-open-action',
-		attr: { type: 'button' },
-	});
-	setIcon(button, 'link');
-	button.createSpan({ cls: 'mbv-visually-hidden', text: '打开附件或链接' });
-	button.addEventListener('click', (event) => {
-		event.preventDefault();
-		event.stopPropagation();
-		button.blur();
-		const { app, entry, options } = state.context;
-		if (!options.fileLinkProperty) return;
-		void openAttachment(
-			app,
-			entry,
-			options.fileLinkProperty,
-			options.openWith,
-		);
-	});
-	return button;
-}
-
-function createStatusCheckbox(
-	frontEl: HTMLElement,
-	state: { context: BookCardContext },
-): HTMLInputElement {
-	const wrapperEl = frontEl.createEl('label', {
-		cls: 'mbv-book-action mbv-book-status-action',
-	});
-	const checkbox = wrapperEl.createEl('input', {
-		attr: { type: 'checkbox' },
-	});
-	wrapperEl.createSpan({ cls: 'mbv-visually-hidden', text: '阅读状态' });
-	checkbox.addEventListener('click', (event) => event.stopPropagation());
-	checkbox.addEventListener('change', () => {
-		const { app, entry, options } = state.context;
-		if (!options.statusProperty) return;
-		const nextStatus = checkbox.checked;
-		checkbox.disabled = true;
-		void updateStatus(app, entry, options.statusProperty, nextStatus)
-			.catch(() => {
-				checkbox.checked = !nextStatus;
-				new Notice('更新阅读状态失败.');
-			})
-			.finally(() => {
-				checkbox.disabled = false;
-				updateStatusLabel(checkbox);
-			});
-	});
-	return checkbox;
-}
-
-function updateAttachmentButton(
-	button: HTMLButtonElement,
-	context: BookCardContext,
-): void {
-	button.classList.toggle('is-hidden', !context.options.fileLinkProperty);
-}
-
-function updateStatusCheckbox(
-	checkbox: HTMLInputElement,
-	context: BookCardContext,
-): void {
-	const property = context.options.statusProperty;
-	const wrapperEl = checkbox.parentElement;
-	if (!wrapperEl) return;
-	wrapperEl.classList.toggle('is-hidden', !property);
-	if (!property) return;
-	checkbox.checked = getStatus(context.entry.getValue(property));
-	updateStatusLabel(checkbox);
-}
-
-function updateStatusLabel(checkbox: HTMLInputElement): void {
-	const label = checkbox.parentElement?.querySelector<HTMLElement>(
-		'.mbv-visually-hidden',
-	);
-	label?.setText(`阅读状态: ${checkbox.checked ? '已读' : '未读'}`);
-}
-
 function updateCover(
 	state: { context: BookCardContext; coverSignature: string },
 	coverEl: HTMLElement,
 	spineImageEl: HTMLImageElement,
+	actionSampleImageEl: HTMLImageElement,
 ): void {
 	const { context } = state;
 	const coverValue = context.options.coverProperty
@@ -191,6 +116,8 @@ function updateCover(
 	coverEl.removeClass('has-cover');
 	spineImageEl.removeAttribute('src');
 	spineImageEl.addClass('is-hidden');
+	actionSampleImageEl.removeAttribute('src');
+	actionSampleImageEl.addClass('is-hidden');
 	if (!coverEl.querySelector('.mbv-book-cover-placeholder')) {
 		coverEl.prepend(createDiv('mbv-book-cover-placeholder'));
 	}
@@ -201,6 +128,7 @@ function updateCover(
 		context.entry.file,
 		coverEl,
 		spineImageEl,
+		actionSampleImageEl,
 	);
 }
 

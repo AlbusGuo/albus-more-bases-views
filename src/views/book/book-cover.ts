@@ -11,6 +11,7 @@ export function renderBookCover(
 	sourceFile: TFile,
 	coverEl: HTMLElement,
 	spineImageEl: HTMLImageElement,
+	actionSampleImageEl: HTMLImageElement,
 ): void {
 	const source = resolveImageSource(app, value, sourceFile);
 	if (source) {
@@ -22,7 +23,7 @@ export function renderBookCover(
 				decoding: 'async',
 			},
 		});
-		bindImageState(image, coverEl, spineImageEl);
+		bindImageState(image, coverEl, spineImageEl, actionSampleImageEl);
 		image.src = source;
 		return;
 	}
@@ -39,13 +40,14 @@ export function renderBookCover(
 	nativeImage.setAttribute('alt', '');
 	nativeImage.setAttribute('loading', 'eager');
 	nativeImage.setAttribute('decoding', 'async');
-	bindImageState(nativeImage, coverEl, spineImageEl);
+	bindImageState(nativeImage, coverEl, spineImageEl, actionSampleImageEl);
 }
 
 function bindImageState(
 	image: HTMLImageElement,
 	coverEl: HTMLElement,
 	spineImageEl: HTMLImageElement,
+	actionSampleImageEl: HTMLImageElement,
 ): void {
 	const markLoaded = () => {
 		if (!image.naturalWidth) return;
@@ -54,11 +56,15 @@ function bindImageState(
 		coverEl.querySelector('.mbv-book-cover-placeholder')?.remove();
 		spineImageEl.src = image.currentSrc || image.src;
 		spineImageEl.removeClass('is-hidden');
+		actionSampleImageEl.src = image.currentSrc || image.src;
+		actionSampleImageEl.removeClass('is-hidden');
 	};
 	const markFailed = () => {
 		image.remove();
 		coverEl.removeClass('has-cover');
 		spineImageEl.addClass('is-hidden');
+		actionSampleImageEl.removeAttribute('src');
+		actionSampleImageEl.addClass('is-hidden');
 	};
 
 	image.addEventListener('load', markLoaded, { once: true });

@@ -386,7 +386,7 @@ function prepareReadOnlyDom(document: Document): void {
 		input.disabled = true;
 	}
 	for (const element of Array.from(document.querySelectorAll<HTMLElement>([
-		'.mbv-book-action', '.mbv-paper-action', '.mbv-project-github-link',
+		'.mbv-book-actions', '.mbv-paper-actions', '.mbv-project-github-link',
 		'.mbv-project-task-delete', '.mbv-project-task-add-host',
 		'.mbv-operator-potential-toggle',
 	].join(',')))) element.dataset.mbvExportRemove = 'true';
