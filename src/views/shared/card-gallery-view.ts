@@ -4,6 +4,7 @@ import {
 	type BasesEntry,
 	type BasesPropertyId,
 	type BasesViewConfig,
+	type Modal,
 	type QueryController,
 } from 'obsidian';
 import type { BasesViewTabsService } from '../../services/bases-view-tabs';
@@ -12,6 +13,16 @@ import type { MarkdownNavigationService } from '../../services/markdown-navigati
 import { AnimationFrameTask } from '../../ui/animation-frame-task';
 import { createBasesViewportGroups } from '../../ui/bases-entry-groups';
 import { ViewportGrid, type ViewportGridGroup } from '../../ui/viewport-grid';
+import {
+	CardPropertyModal,
+} from './card-property-modal';
+import { collectCardPropertySuggestions } from './card-property-suggestions';
+import type {
+	CardPropertyEditorDefinition,
+	CardPropertyPreviewFactory,
+} from './card-property-editor-types';
+import { CardEditorHost } from './card-editor-host';
+import type { InteractiveCardController } from './card-interaction';
 
 export interface CardGalleryCardContext<Options> {
 	app: App;
@@ -26,6 +37,8 @@ export interface CardGalleryCardController<Context> {
 	element: HTMLElement;
 	update: (context: Context) => void;
 	prepareHtmlExport?: () => Promise<void>;
+	canOpenEditor?: () => boolean;
+	prepareOpenEditor?: () => void;
 	destroy?: () => void;
 }
 
@@ -46,6 +59,7 @@ export interface CardGalleryViewDefinition<
 	overscanRows?: number;
 	maxDetachedItems?: number;
 	resizeSettleDelay?: number;
+	editor?: CardPropertyEditorDefinition<Options>;
 }
 
 /**
@@ -61,10 +75,13 @@ export abstract class CardGalleryView<
 	protected readonly gridEl: HTMLElement;
 
 	private readonly renderer: ViewportGrid<BasesEntry, Controller>;
+	private readonly cardContexts = new WeakMap<HTMLElement, Context>();
+	private readonly cardControllers = new WeakMap<HTMLElement, Controller>();
 	private currentOptions: Options | null = null;
 	private visibleProperties: BasesPropertyId[] = [];
 	private groups: readonly ViewportGridGroup<BasesEntry>[] = createBasesViewportGroups([]);
 	private readonly dataUpdateTask: AnimationFrameTask;
+	private readonly editorHost: CardEditorHost<Context>;
 
 	protected constructor(
 		controller: QueryController,
@@ -90,15 +107,25 @@ export abstract class CardGalleryView<
 			this.containerEl,
 			() => this.applyDataUpdate(),
 		);
+		this.editorHost = new CardEditorHost(
+			this.containerEl,
+			(context, onClosed) => this.buildCardEditor(context, onClosed),
+		);
 		this.renderer = new ViewportGrid({
 			containerEl: this.gridEl,
 			getKey: (entry) => entry.file.path,
 			create: (entry) => {
-				const card = definition.createCard(this.createCardContext(entry));
+				const context = this.createCardContext(entry);
+				const card = definition.createCard(context);
+				this.bindCardEditor(card, context);
 				this.onCardCreated(card);
 				return card;
 			},
-			update: (card, entry) => card.update(this.createCardContext(entry)),
+			update: (card, entry) => {
+				const context = this.createCardContext(entry);
+				this.bindCardEditor(card, context);
+				card.update(context);
+			},
 			dispose: (card) => {
 				this.onCardDisposed(card);
 				card.destroy?.();
@@ -117,6 +144,7 @@ export abstract class CardGalleryView<
 			resizeSettleDelay: definition.resizeSettleDelay,
 			slotClass: definition.slotClass,
 		});
+		this.registerDomEvent(this.gridEl, 'contextmenu', this.handleCardContextMenu);
 	}
 
 	onDataUpdated(): void {
@@ -143,6 +171,7 @@ export abstract class CardGalleryView<
 	}
 
 	onunload(): void {
+		this.editorHost.destroy();
 		this.dataUpdateTask.cancel();
 		this.onBeforeGalleryUnload();
 		this.renderer.destroy();
@@ -167,6 +196,36 @@ export abstract class CardGalleryView<
 
 	protected refreshGalleryCards(): void {
 		this.renderer.setGroups(this.groups);
+	}
+
+	protected get isCardEditorOpen(): boolean {
+		return this.editorHost.isOpen;
+	}
+
+	protected supportsCardEditor(): boolean {
+		return this.definition.editor !== undefined;
+	}
+
+	protected buildCardEditor(
+		context: Context,
+		onClosed: () => void,
+	): Modal | Promise<Modal | null> | null {
+		if (!this.definition.editor) return null;
+		return new CardPropertyModal(
+			context,
+			this.definition.editor,
+			this.createPreviewFactory(context),
+			collectCardPropertySuggestions(
+				this.definition.editor,
+				context.options,
+				this.groups.flatMap((group) => group.items),
+			),
+			onClosed,
+		);
+	}
+
+	protected requestCardEditor(entry: BasesEntry): void {
+		this.editorHost.open(this.createCardContext(entry));
 	}
 
 	get htmlExportContainer(): HTMLElement {
@@ -241,6 +300,50 @@ export abstract class CardGalleryView<
 
 	protected onAfterGalleryUnload(): void {}
 
+	private bindCardEditor(card: Controller, context: Context): void {
+		card.element.dataset.mbvCardEditor = '';
+		this.cardContexts.set(card.element, context);
+		this.cardControllers.set(card.element, card);
+	}
+
+	private readonly handleCardContextMenu = (event: MouseEvent): void => {
+		if (!this.supportsCardEditor()) return;
+		const target = event.target as Element | null;
+		if (!target || target.closest(
+			'button, input, textarea, select, [contenteditable="true"], ' +
+			'[data-mbv-card-editor-ignore]',
+		)) return;
+		const cardEl = target.closest<HTMLElement>('[data-mbv-card-editor]');
+		if (!cardEl || !this.gridEl.contains(cardEl)) return;
+		const context = this.cardContexts.get(cardEl);
+		const card = this.cardControllers.get(cardEl);
+		if (!context || !card || card.canOpenEditor?.() === false) return;
+		event.preventDefault();
+		event.stopPropagation();
+		const focused = cardEl.ownerDocument.activeElement;
+		if (focused instanceof HTMLElement && cardEl.contains(focused)) focused.blur();
+		cardEl.ownerDocument.getSelection()?.removeAllRanges();
+		card.prepareOpenEditor?.();
+		this.editorHost.open(context);
+	};
+
+	private createPreviewFactory(context: Context): CardPropertyPreviewFactory {
+		return (ownerEl, entry) => {
+			const createContext = (nextEntry: BasesEntry): Context => ({
+				...context,
+				ownerEl,
+				entry: nextEntry,
+			});
+			const card = this.definition.createCard(createContext(entry));
+			return {
+				element: card.element,
+				update: (nextEntry) => card.update(createContext(nextEntry)),
+				destroy: () => card.destroy?.(),
+				interactive: isInteractiveCard(card) ? card : undefined,
+			};
+		};
+	}
+
 	private createCardContext(entry: BasesEntry): Context {
 		return this.extendCardContext({
 			app: this.app,
@@ -253,4 +356,13 @@ export abstract class CardGalleryView<
 	}
 
 	private readonly htmlExporter: CardGalleryHtmlExporter;
+}
+
+function isInteractiveCard(value: unknown): value is InteractiveCardController {
+	if (!value || typeof value !== 'object') return false;
+	const card = value as Partial<InteractiveCardController>;
+	return card.element instanceof HTMLElement &&
+		card.interactionElement instanceof HTMLElement &&
+		card.placementElement instanceof HTMLElement &&
+		typeof card.openMarkdown === 'function';
 }

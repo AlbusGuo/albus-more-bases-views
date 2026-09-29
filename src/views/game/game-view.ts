@@ -17,6 +17,7 @@ import {
 	DEFAULT_CARD_MIN_WIDTH,
 } from '../shared/card-sizing';
 import { CardGalleryView } from '../shared/card-gallery-view';
+import { GAME_CARD_EDITOR } from '../shared/card-editor-definitions';
 
 export const GAME_VIEW_TYPE = 'albus-more-bases-views-game';
 export { getGameViewOptions };
@@ -46,6 +47,7 @@ export class GameView extends CardGalleryView<
 			estimatedRowHeight: (itemWidth) => itemWidth * 4 / 3 + 90,
 			columnGap: CARD_GRID_COLUMN_GAP,
 			rowGap: 40,
+			editor: GAME_CARD_EDITOR,
 		});
 	}
 }

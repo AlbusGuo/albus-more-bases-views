@@ -1256,6 +1256,167 @@ button:not(.clickable-icon).mbv-paper-status-action:focus {
 	-webkit-app-region: no-drag;
 }
 
+.modal-container .modal.mbv-card-property-modal {
+	display: flex;
+	width: var(--modal-width);
+	height: var(--modal-height);
+	max-width: var(--modal-max-width);
+	max-height: var(--modal-max-height);
+	flex-direction: column;
+	padding: 0;
+}
+
+.modal-container .modal.mbv-card-property-modal .modal-header {
+	padding: var(--size-4-4);
+}
+
+.modal-container .modal.mbv-card-property-modal .modal-content {
+	height: 100%;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+}
+
+.mbv-card-property-editor {
+	display: flex;
+	min-height: 0;
+}
+
+.mbv-card-property-preview {
+	position: relative;
+	display: flex;
+	min-width: 0;
+	box-sizing: border-box;
+	padding: 28px;
+	flex: 1 1 34%;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.mbv-card-property-preview.is-awaiting-pointer::after {
+	position: absolute;
+	inset: 0;
+	z-index: 100;
+	content: '';
+}
+
+.mbv-card-property-preview-context {
+	display: block !important;
+	width: min(76%, 320px) !important;
+	min-width: 160px;
+	min-height: 0 !important;
+	box-sizing: border-box;
+	margin: 0 !important;
+	padding: 0 !important;
+	background: transparent !important;
+	container-type: inline-size;
+}
+
+.mbv-card-property-preview-card {
+	width: 100% !important;
+	max-width: none !important;
+	margin: 0 !important;
+}
+
+.mbv-card-property-form {
+	min-width: 440px;
+	max-width: none;
+	min-height: 0;
+	box-sizing: border-box;
+	padding: 4px 20px 20px;
+	flex: 2 1 66%;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.mbv-card-property-modal .setting-item {
+	align-items: flex-start;
+}
+
+.mbv-card-property-modal .setting-item-info {
+	flex: 0 1 112px;
+}
+
+.mbv-card-property-modal .setting-item-control {
+	display: flex;
+	min-width: 0;
+	flex: 1 1 180px;
+	flex-wrap: nowrap;
+	gap: 8px;
+}
+
+.mbv-card-property-list {
+	display: flex;
+	width: 100%;
+	min-width: 0;
+	align-items: flex-end;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.mbv-card-property-list-row {
+	display: flex;
+	width: auto;
+	min-width: 0;
+	max-width: 100%;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+.mbv-card-property-list-row > input {
+	max-width: 100%;
+}
+
+.mbv-card-property-list-button.clickable-icon {
+	width: var(--input-height);
+	height: var(--input-height);
+	box-sizing: border-box;
+	flex: 0 0 var(--input-height);
+}
+
+.mbv-card-property-list-add.clickable-icon {
+	align-self: flex-end;
+}
+
+@media (max-width: 600px) {
+	.mbv-card-property-editor {
+		flex-direction: column;
+	}
+
+	.mbv-card-property-preview {
+		min-height: 42%;
+		padding: 20px;
+		flex-basis: 42%;
+		border-right: 0;
+		border-bottom: 1px solid var(--background-modifier-border);
+	}
+
+	.mbv-card-property-preview-context {
+		width: min(42%, 220px) !important;
+	}
+
+	.mbv-card-property-form {
+		width: 100%;
+		min-width: 0;
+		max-width: none;
+		flex-basis: 58%;
+	}
+
+	.mbv-card-property-modal .setting-item {
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.mbv-card-property-modal .setting-item-info,
+	.mbv-card-property-modal .setting-item-control {
+		flex-basis: 100%;
+	}
+}
+
 .mbv-settings-modal-container .modal {
 	width: var(--modal-width);
 	height: var(--modal-height);

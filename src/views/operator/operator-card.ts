@@ -51,8 +51,6 @@ export interface OperatorCardContext {
 	artworkRasterizer: OperatorArtworkRasterizer;
 	artworkWidth: number;
 	fallbackName?: string;
-	openEditor: (context: OperatorCardContext) => void;
-	contextMenuEnabled?: boolean;
 	entryOpenEnabled?: boolean;
 	pointerMotionEnabled?: boolean;
 	badgeCyclePausesOnInteraction?: boolean;
@@ -68,6 +66,8 @@ export interface OperatorCardController {
 	setHtmlExportItemWidth: (width: number) => void;
 	prepareHtmlExport: () => Promise<void>;
 	resetPointerMotion: () => void;
+	canOpenEditor: () => boolean;
+	prepareOpenEditor: () => void;
 	destroy: () => void;
 }
 
@@ -194,13 +194,6 @@ export function createOperatorCard(
 	if (initialContext.pointerMotionEnabled !== false) {
 		bindPointerMotion(cardEl, elements.frameEl, state);
 	}
-	if (initialContext.contextMenuEnabled !== false) cardEl.addEventListener('contextmenu', (event) => {
-		if (state.positionEditing || (event.target as Element | null)?.closest('button')) return;
-		event.preventDefault(); event.stopPropagation();
-		clearSelection();
-		state.context.openEditor(state.context);
-	});
-
 	const update = (context: OperatorCardContext): void => {
 		state.context = context;
 		if (context.entryOpenEnabled !== false) {
@@ -372,6 +365,8 @@ export function createOperatorCard(
 		setHtmlExportItemWidth: setArtworkWidth,
 		prepareHtmlExport,
 		resetPointerMotion: () => resetPointerMotion(cardEl, elements.frameEl, state),
+		canOpenEditor: () => !state.positionEditing,
+		prepareOpenEditor: clearSelection,
 		destroy,
 	};
 }

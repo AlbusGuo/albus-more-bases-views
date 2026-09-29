@@ -43,8 +43,6 @@ export class HearthstoneView extends CardGalleryView<HearthstoneOptions, Hearths
 	private currentEntries: readonly BasesEntry[] = [];
 	private relatedEntries = new Map<string, readonly BasesEntry[]>();
 	private relatedChildPaths = new Set<string>();
-	private modal: MinionPropertyModal | null = null;
-	private editorOpening = false;
 	private disposed = false;
 	private itemWidth = 160;
 	private readonly packGate: ViewPackGate;
@@ -92,8 +90,28 @@ export class HearthstoneView extends CardGalleryView<HearthstoneOptions, Hearths
 			})),
 			images: this.images, work: this.work, surfaceMasks: this.surfaceMasks,
 			resetPointer: card => this.interaction.resetPointer(card.element),
-			openEditor: entry => this.beginOpenEditor(entry, context.options),
-			isEditorOpen: () => this.editorOpening || this.modal !== null };
+			prepareEditor: card => {
+				this.interaction.collapse();
+				this.interaction.resetPointer(card.element);
+			},
+			openEditor: entry => this.requestCardEditor(entry),
+			isEditorOpen: () => this.isCardEditorOpen };
+	}
+	protected supportsCardEditor(): boolean { return true; }
+	protected async buildCardEditor(
+		context: HearthstoneCardContext,
+		onClosed: () => void,
+	): Promise<MinionPropertyModal | null> {
+		const assets = await loadHearthstoneAssets();
+		if (this.disposed) return null;
+		return new MinionPropertyModal(
+			this.app,
+			context.entry.file,
+			context.options,
+			assets,
+			this.editorSuggestions(context.options),
+			onClosed,
+		);
 	}
 	protected transformGalleryGroups(
 		groups: readonly ViewportGridGroup<BasesEntry>[],
@@ -114,7 +132,11 @@ export class HearthstoneView extends CardGalleryView<HearthstoneOptions, Hearths
 		return relations.groups;
 	}
 	protected onOptionsChanged(options: HearthstoneOptions, previous: HearthstoneOptions | null): void { if (options.material !== previous?.material) this.materials.clear(); }
-	protected onCardCreated(card: HearthstoneCard): void { this.cards.add(card); card.setArtworkWidth(this.itemWidth); this.interaction.register(card); }
+	protected onCardCreated(card: HearthstoneCard): void {
+		this.cards.add(card);
+		card.setArtworkWidth(this.itemWidth);
+		this.interaction.register(card);
+	}
 	protected onCardAttached(card: HearthstoneCard): void { card.attach(); }
 	protected onCardDetached(card: HearthstoneCard): void { this.interaction.detach(card); card.suspend(); }
 	protected onCardDisposed(card: HearthstoneCard): void { this.interaction.unregister(card); this.cards.delete(card); }
@@ -122,8 +144,6 @@ export class HearthstoneView extends CardGalleryView<HearthstoneOptions, Hearths
 	protected onBeforeGalleryUnload(): void {
 		this.disposed = true;
 		this.packGate.destroy();
-		this.editorOpening = false;
-		this.modal?.close(); this.modal = null;
 		this.interaction.destroy(); this.materials.clear(); this.relatedEntries.clear();
 		this.relatedChildPaths.clear(); this.currentEntries = [];
 	}
@@ -140,26 +160,6 @@ export class HearthstoneView extends CardGalleryView<HearthstoneOptions, Hearths
 		applyCardMaterialAssets(this.containerEl, 'hearthstone');
 		this.containerEl.removeClass('is-pack-pending');
 		super.onDataUpdated();
-	}
-	private beginOpenEditor(entry: BasesEntry, options: HearthstoneOptions): void {
-		this.editorOpening = true;
-		void this.openEditor(entry, options).finally(() => { this.editorOpening = false; });
-	}
-	private async openEditor(entry: BasesEntry, options: HearthstoneOptions): Promise<void> {
-		const assets = await loadHearthstoneAssets();
-		if (this.disposed) return;
-		if (this.modal?.containerEl.isConnected) this.modal.close();
-		const ownerWindow = this.containerEl.ownerDocument.defaultView ?? window;
-		const modal = new MinionPropertyModal(
-			this.app, entry.file, options, assets, this.editorSuggestions(options),
-			() => {
-				ownerWindow.setTimeout(() => {
-					if (this.modal === modal) this.modal = null;
-				}, 0);
-			},
-		);
-		this.modal = modal;
-		modal.open();
 	}
 	private editorSuggestions(options: HearthstoneOptions): HearthstoneEditorSuggestions {
 		const noteFiles = this.currentEntries

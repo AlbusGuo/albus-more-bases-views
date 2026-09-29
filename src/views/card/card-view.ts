@@ -25,6 +25,7 @@ import {
 	CardGalleryView,
 	type CardGalleryCardContext,
 } from '../shared/card-gallery-view';
+import { CARD_CARD_EDITOR } from '../shared/card-editor-definitions';
 
 export const CARD_VIEW_TYPE = 'albus-more-bases-views-card';
 export { getCardViewOptions };
@@ -70,6 +71,7 @@ export class CardView extends CardGalleryView<
 			columnGap: CARD_GRID_COLUMN_GAP,
 			rowGap: 32,
 			overscanRows: 2,
+			editor: CARD_CARD_EDITOR,
 		});
 		this.interaction = new CardInteractionController(
 			this.containerEl,
@@ -125,6 +127,10 @@ export class CardView extends CardGalleryView<
 	}
 
 	protected onCardCreated(card: CollectibleCardController): void {
+		card.prepareOpenEditor = () => {
+			this.interaction.collapse();
+			this.interaction.resetPointer(card.element);
+		};
 		this.interaction.register(card);
 	}
 

@@ -33,6 +33,7 @@ export interface CollectibleCardController {
 	update: (context: CollectibleCardContext) => void;
 	openMarkdown: (event: MouseEvent | KeyboardEvent) => Promise<void>;
 	applyPointerStyle: (values: Readonly<Record<string, string>>) => void;
+	prepareOpenEditor?: () => void;
 }
 
 interface CardElements {

@@ -18,6 +18,7 @@ import {
 	DEFAULT_CARD_MIN_WIDTH,
 } from '../shared/card-sizing';
 import { CardGalleryView } from '../shared/card-gallery-view';
+import { CELEBRITY_CARD_EDITOR } from '../shared/card-editor-definitions';
 
 export const CELEBRITY_VIEW_TYPE = 'albus-more-bases-views-celebrity';
 export { getCelebrityViewOptions };
@@ -51,6 +52,7 @@ export class CelebrityView extends CardGalleryView<
 			columnGap: CARD_GRID_COLUMN_GAP,
 			rowGap: 32,
 			overscanRows: 2,
+			editor: CELEBRITY_CARD_EDITOR,
 		});
 	}
 

@@ -14,6 +14,7 @@ import {
 } from './course-options';
 import { DEFAULT_CARD_MIN_WIDTH } from '../shared/card-sizing';
 import { CardGalleryView } from '../shared/card-gallery-view';
+import { COURSE_CARD_EDITOR } from '../shared/card-editor-definitions';
 
 export const COURSE_VIEW_TYPE = 'albus-more-bases-views-course';
 export { getCourseViewOptions };
@@ -43,6 +44,7 @@ export class CourseView extends CardGalleryView<
 			estimatedRowHeight: () => 260,
 			columnGap: 20,
 			rowGap: 20,
+			editor: COURSE_CARD_EDITOR,
 		});
 	}
 }

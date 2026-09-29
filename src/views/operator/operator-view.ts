@@ -47,7 +47,6 @@ export class OperatorView extends CardGalleryView<
 	private badgeSwitchTimer: number | null = null;
 	private badgeSequence = 0;
 	private hiddenMode = false;
-	private modal: OperatorPropertyModal | null = null;
 	private readonly packGate: ViewPackGate;
 	private packReady = false;
 
@@ -158,8 +157,16 @@ export class OperatorView extends CardGalleryView<
 			assets: this.assets,
 			artworkRasterizer: this.artworkRasterizer,
 			artworkWidth: this.artworkWidth,
-			openEditor: (cardContext) => this.openEditor(cardContext),
 		};
+	}
+
+	protected supportsCardEditor(): boolean { return true; }
+
+	protected buildCardEditor(
+		context: OperatorCardContext,
+		onClosed: () => void,
+	): OperatorPropertyModal {
+		return new OperatorPropertyModal(context, createOperatorCard, onClosed);
 	}
 
 	protected onItemWidthChanged(itemWidth: number): void {
@@ -222,8 +229,6 @@ export class OperatorView extends CardGalleryView<
 	protected onBeforeGalleryUnload(): void {
 		this.packGate.destroy();
 		this.stopBadgeSwitching();
-		this.modal?.close();
-		this.modal = null;
 	}
 
 	protected onAfterGalleryUnload(): void {
@@ -260,22 +265,6 @@ export class OperatorView extends CardGalleryView<
 			this.badgeSwitchTimer,
 		);
 		this.badgeSwitchTimer = null;
-	}
-
-	private openEditor(context: OperatorCardContext): void {
-		if (this.modal?.containerEl.isConnected) this.modal.close();
-		const ownerWindow = this.containerEl.ownerDocument.defaultView ?? window;
-		const modal = new OperatorPropertyModal(
-			context,
-			createOperatorCard,
-			() => {
-				ownerWindow.setTimeout(() => {
-					if (this.modal === modal) this.modal = null;
-				}, 0);
-			},
-		);
-		this.modal = modal;
-		modal.open();
 	}
 
 	private setHiddenMode(hiddenMode: boolean): void {

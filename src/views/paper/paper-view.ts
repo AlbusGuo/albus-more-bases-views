@@ -17,6 +17,7 @@ import {
 	DEFAULT_CARD_MIN_WIDTH,
 } from '../shared/card-sizing';
 import { CardGalleryView } from '../shared/card-gallery-view';
+import { PAPER_CARD_EDITOR } from '../shared/card-editor-definitions';
 
 export const PAPER_VIEW_TYPE = 'albus-more-bases-views-paper';
 export { getPaperViewOptions };
@@ -50,6 +51,7 @@ export class PaperView extends CardGalleryView<
 				itemWidth * PAPER_ASPECT_RATIO + CARD_DETAILS_ESTIMATE,
 			columnGap: CARD_GRID_COLUMN_GAP,
 			rowGap: 20,
+			editor: PAPER_CARD_EDITOR,
 		});
 	}
 }

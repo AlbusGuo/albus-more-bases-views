@@ -13,6 +13,7 @@ import {
 	DEFAULT_CARD_MIN_WIDTH,
 } from '../shared/card-sizing';
 import { CardGalleryView } from '../shared/card-gallery-view';
+import { MOVIE_CARD_EDITOR } from '../shared/card-editor-definitions';
 import {
 	createMovieCard,
 	type MovieCardContext,
@@ -48,6 +49,7 @@ export class MovieView extends CardGalleryView<
 				itemWidth * getPosterHeightFactor(options?.posterAspectRatio ?? 2 / 3) + 72,
 			columnGap: COMPACT_CARD_GRID_COLUMN_GAP,
 			rowGap: 20,
+			editor: MOVIE_CARD_EDITOR,
 		});
 	}
 

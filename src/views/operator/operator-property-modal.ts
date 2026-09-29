@@ -1,17 +1,21 @@
 import {
 	ListValue,
-	Notice,
 	Setting,
 	StringValue,
-	normalizePath,
-	parsePropertyId,
 	type BasesEntry,
 	type BasesPropertyId,
 	type TFile,
 	type Value,
 } from 'obsidian';
-import { ViewIsolatedModal } from '../../ui/view-isolated-modal';
 import { listVaultImages } from '../../ui/vault-image-suggest';
+import { AutoSavePropertyModal } from '../shared/auto-save-property-modal';
+import {
+	readFrontmatter,
+	renameNoteFile,
+	savePropertyChanges,
+	unwrapBasesValue,
+	writablePropertyName,
+} from '../shared/property-editing';
 import type { OperatorCardContext, OperatorCardController } from './operator-card';
 import { OPERATOR_BADGE_SWITCH_INTERVAL_MS } from './operator-constants';
 import {
@@ -45,9 +49,8 @@ interface ListFocusTarget {
 	index: number;
 }
 
-export class OperatorPropertyModal extends ViewIsolatedModal {
+export class OperatorPropertyModal extends AutoSavePropertyModal<OperatorField> {
 	private readonly original = new Map<string, unknown>();
-	private readonly dirty = new Set<OperatorField>();
 	private imageFiles: TFile[] = [];
 	private listControl!: OperatorPropertyListControl;
 	private formEl!: HTMLElement;
@@ -57,8 +60,6 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 	private badgeSequence = 0;
 	private draft!: OperatorDraft;
 	private readonly hiddenMode: boolean;
-	private saveTimer: number | null = null;
-	private saveChain: Promise<void> = Promise.resolve();
 	private closed = false;
 
 	constructor(
@@ -66,7 +67,7 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 		private readonly createCard: OperatorCardFactory,
 		private readonly onClosed?: () => void,
 	) {
-		super(context.app); this.hiddenMode = context.hiddenMode;
+		super(context.app, '保存干员属性失败.'); this.hiddenMode = context.hiddenMode;
 	}
 
 	onOpen(): void {
@@ -82,7 +83,7 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 	onClose(): void {
 		this.closed = true; this.stopBadgeSwitching(); this.listControl.destroy(); this.preview?.destroy(); this.preview = null;
 		this.imageFiles = []; this.contentEl.empty();
-		void this.flushSave().finally(() => { this.original.clear(); this.dirty.clear(); });
+		void this.flushSave(this.formEl).finally(() => { this.original.clear(); this.dirty.clear(); });
 		this.onClosed?.();
 	}
 
@@ -212,11 +213,8 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 	}
 
 	private mark(field: OperatorField, immediate = false): void {
-		this.dirty.add(field); this.updatePreview();
-		if (immediate) { this.enqueueSave(); return; }
-		const ownerWindow = this.formEl.ownerDocument.defaultView ?? window;
-		if (this.saveTimer !== null) ownerWindow.clearTimeout(this.saveTimer);
-		this.saveTimer = ownerWindow.setTimeout(() => { this.saveTimer = null; this.enqueueSave(); }, 250);
+		this.updatePreview();
+		this.markForSave(field, this.formEl, immediate);
 	}
 
 	private updatePreview(): void { this.preview?.update(this.previewContext()); }
@@ -245,7 +243,6 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 			...this.context, ownerEl: this.previewEl, entry: this.previewEntry(), hiddenMode: this.hiddenMode,
 			artworkWidth: 210,
 			fallbackName: this.draft.name,
-			contextMenuEnabled: false,
 			entryOpenEnabled: false,
 			pointerMotionEnabled: false,
 			badgeCyclePausesOnInteraction: false,
@@ -268,16 +265,7 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 		return this.context.entry.getValue(property);
 	}
 
-	private enqueueSave(): void {
-		if (this.saveTimer !== null) { (this.formEl.ownerDocument.defaultView ?? window).clearTimeout(this.saveTimer); this.saveTimer = null; }
-		this.saveChain = this.saveChain.then(() => this.saveDirty()).catch((error: unknown) => {
-			new Notice(error instanceof Error ? error.message : '保存干员属性失败.');
-		});
-	}
-
-	private flushSave(): Promise<void> { this.enqueueSave(); return this.saveChain; }
-
-	private async saveDirty(): Promise<void> {
+	protected async saveDirty(): Promise<void> {
 		const fields = [...this.dirty]; if (!fields.length) return;
 		for (const field of fields) this.dirty.delete(field);
 		const changes = new Map<string, { before: unknown; after: unknown }>();
@@ -293,7 +281,7 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 				if (previous && JSON.stringify(previous.after) !== JSON.stringify(after)) throw new Error(`${property} 映射到多个字段, 修改内容存在冲突.`);
 				changes.set(property, { before, after });
 			}
-			if (changes.size) await saveProperties(this.app, this.context.entry.file, changes);
+			if (changes.size) await savePropertyChanges(this.app, this.context.entry.file, changes);
 			for (const [property, change] of changes) this.original.set(property, structuredClone(change.after));
 		} catch (error) {
 			for (const field of fields) this.dirty.add(field); throw error;
@@ -301,26 +289,11 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 	}
 
 	private async renameFile(): Promise<void> {
-		const entered = this.draft.name.trim();
-		if (!entered) throw new Error('文件名不能为空.');
-		if (/[\\/:*?"<>|]/u.test(entered)) throw new Error('文件名包含无效字符.');
-		const extension = this.context.entry.file.extension
-			? `.${this.context.entry.file.extension}`
-			: '';
-		const basename = extension && entered.toLowerCase().endsWith(extension.toLowerCase())
-			? entered.slice(0, -extension.length).trim()
-			: entered;
-		if (!basename) throw new Error('文件名不能为空.');
-		if (basename === this.context.entry.file.basename) return;
-		const separator = this.context.entry.file.path.lastIndexOf('/');
-		const folder = separator >= 0
-			? this.context.entry.file.path.slice(0, separator + 1)
-			: '';
-		await this.app.fileManager.renameFile(
+		this.draft.name = await renameNoteFile(
+			this.app,
 			this.context.entry.file,
-			normalizePath(`${folder}${basename}${extension}`),
+			this.draft.name,
 		);
-		this.draft.name = basename;
 	}
 
 	private serialize(field: OperatorField): unknown {
@@ -340,31 +313,16 @@ export class OperatorPropertyModal extends ViewIsolatedModal {
 			this.writableProperty(field) !== null;
 	}
 	private writableProperty(field: OperatorField): string | null {
-		const id = this.propertyId(field); if (!id) return null;
-		const parsed = parsePropertyId(id); return parsed.type === 'note' ? parsed.name : null;
+		return writablePropertyName(this.propertyId(field));
 	}
 	private frontmatter(): Record<string, unknown> | undefined {
-		return this.app.metadataCache.getFileCache(this.context.entry.file)?.frontmatter;
+		return readFrontmatter(this.app, this.context.entry.file);
 	}
 	private readFrontmatterProperty(id: BasesPropertyId): unknown {
-		const parsed = parsePropertyId(id); return parsed.type === 'note' ? this.frontmatter()?.[parsed.name] : undefined;
+		const property = writablePropertyName(id);
+		return property ? this.frontmatter()?.[property] : undefined;
 	}
-	private readEntryValue(id: BasesPropertyId | null): unknown { return id ? unwrapValue(this.context.entry.getValue(id)) : undefined; }
-}
-
-async function saveProperties(app: OperatorCardContext['app'], file: TFile,
-	changes: ReadonlyMap<string, { before: unknown; after: unknown }>): Promise<void> {
-	const current = app.vault.getFileByPath(file.path);
-	if (!current || current !== file) throw new Error('笔记已移动或删除.');
-	await app.fileManager.processFrontMatter(current, (frontmatter) => {
-		const record = frontmatter as Record<string, unknown>;
-		for (const [property, change] of changes) {
-			if (JSON.stringify(record[property]) !== JSON.stringify(change.before)) throw new Error(`${property} 已发生变化, 请重新打开编辑器.`);
-		}
-		for (const [property, change] of changes) {
-			if (change.after === undefined) delete record[property]; else record[property] = change.after;
-		}
-	});
+	private readEntryValue(id: BasesPropertyId | null): unknown { return id ? unwrapBasesValue(this.context.entry.getValue(id)) : undefined; }
 }
 
 function valueText(value: unknown): string {
@@ -403,11 +361,6 @@ function serializeList(values: readonly string[], unique: boolean): unknown {
 }
 function readRarity(value: unknown): string {
 	const rarity = Number(valueText(value)); return String(Number.isFinite(rarity) ? Math.min(7, Math.max(1, Math.round(rarity))) : 1);
-}
-function unwrapValue(value: Value | null): unknown {
-	if (!value) return undefined;
-	if (value instanceof ListValue) return Array.from({ length: value.length() }, (_, index) => unwrapValue(value.get(index)));
-	return value.toString();
 }
 function toValue(value: unknown): Value | null {
 	if (value === undefined || value === null) return null;

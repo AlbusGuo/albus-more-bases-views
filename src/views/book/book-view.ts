@@ -17,6 +17,7 @@ import {
 	DEFAULT_CARD_MIN_WIDTH,
 } from '../shared/card-sizing';
 import { CardGalleryView } from '../shared/card-gallery-view';
+import { BOOK_CARD_EDITOR } from '../shared/card-editor-definitions';
 
 export const BOOK_VIEW_TYPE = 'albus-more-bases-views-book';
 export { getBookViewOptions };
@@ -49,6 +50,7 @@ export class BookView extends CardGalleryView<
 				itemWidth * 1.5 + CARD_DETAILS_ESTIMATE,
 			columnGap: CARD_GRID_COLUMN_GAP,
 			rowGap: 32,
+			editor: BOOK_CARD_EDITOR,
 		});
 	}
 }

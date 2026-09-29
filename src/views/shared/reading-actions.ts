@@ -167,9 +167,9 @@ export function createReadingActions<T extends ReadingActionsContext>(
 }
 
 const STATUS_MENU_ICONS: Record<ReadingStatus, string> = {
-	已阅: 'check-circle-2',
+	已阅: 'book-check',
 	阅读中: 'book-open',
-	未读: 'circle',
+	未读: 'book',
 };
 
 function statusState(status: ReadingStatus): 'read' | 'reading' | 'unread' {

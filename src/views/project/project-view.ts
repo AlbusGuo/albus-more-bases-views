@@ -17,6 +17,7 @@ import {
 	DEFAULT_CARD_MIN_WIDTH,
 } from '../shared/card-sizing';
 import { CardGalleryView } from '../shared/card-gallery-view';
+import { PROJECT_CARD_EDITOR } from '../shared/card-editor-definitions';
 
 export const PROJECT_VIEW_TYPE = 'albus-more-bases-views-project';
 export { getProjectViewOptions };
@@ -46,6 +47,7 @@ export class ProjectView extends CardGalleryView<
 			estimatedRowHeight: () => 560,
 			columnGap: COMPACT_CARD_GRID_COLUMN_GAP,
 			rowGap: 16,
+			editor: PROJECT_CARD_EDITOR,
 		});
 	}
 }

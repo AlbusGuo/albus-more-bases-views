@@ -36,6 +36,7 @@ export interface HearthstoneCardContext extends CardGalleryCardContext<Hearthsto
 	images: ImageResourceCache; work: FrameWorkQueue; surfaceMasks: HearthstoneSurfaceMaskCache;
 	relatedEntries: readonly HearthstoneRelatedEntry[];
 	resetPointer: (card: HearthstoneCard) => void;
+	prepareEditor: (card: HearthstoneCard) => void;
 	openEditor: (entry: BasesEntry) => void;
 	isEditorOpen: () => boolean;
 }
@@ -115,7 +116,6 @@ export class HearthstoneCard {
 		this.rotator.append(this.scene.element);
 		this.translated.append(this.hitSurface.element);
 		this.message = this.element.createDiv({ cls: 'mbv-hs-message', attr: { role: 'status' } });
-		this.interactionElement.addEventListener('contextmenu', this.handleContextMenu);
 		this.update(context); this.ready = this.initialize();
 	}
 	getInteractionRect = (): DOMRect => this.hitSurface.element.getBoundingClientRect();
@@ -128,6 +128,7 @@ export class HearthstoneCard {
 		this.scene.setPointerStyle(values);
 	};
 	isEditing = (): boolean => this.context.isEditorOpen();
+	prepareOpenEditor = (): void => this.context.prepareEditor(this);
 	openMarkdown = async (event: MouseEvent | KeyboardEvent): Promise<void> => this.open(event);
 	onExpandedChange = (expanded: boolean): void => {
 		this.expanded = expanded; this.interactionElement.setAttribute('aria-expanded', String(expanded)); this.setArtworkWidth(this.width);
@@ -199,7 +200,6 @@ export class HearthstoneCard {
 		this.disposed = true;
 		this.relatedCards?.destroy(); this.relatedCards = null;
 		this.suspend(); this.skillView = null;
-		this.interactionElement.removeEventListener('contextmenu', this.handleContextMenu);
 		for (const image of Array.from(this.element.querySelectorAll('img'))) {
 			image.removeAttribute('src');
 			image.remove();
@@ -207,7 +207,6 @@ export class HearthstoneCard {
 		this.element.empty();
 		this.artworkSource = ''; this.assets = null;
 	}
-	private readonly handleContextMenu = (event: MouseEvent): void => this.editFromContextMenu(event);
 	private async initialize(): Promise<void> {
 		try {
 			await prepareHearthstoneFonts(this.element.ownerDocument);
@@ -278,7 +277,7 @@ export class HearthstoneCard {
 			{
 				openEntry: (entry, event) => { void this.openEntry(entry, event); },
 				editEntry: entry => {
-					this.context.resetPointer(this);
+					this.context.prepareEditor(this);
 					this.context.openEditor(entry);
 				},
 				setParentPreviewActive: active => {
@@ -392,11 +391,6 @@ export class HearthstoneCard {
 		try {
 			if (!await navigation.open(entry.file, entry.file.path, options.markdownOpenMode, event, ownerEl)) await app.workspace.openLinkText(entry.file.path, entry.file.path, Keymap.isModEvent(event));
 		} catch { new Notice('打开笔记失败.'); }
-	}
-	private editFromContextMenu(event: MouseEvent): void {
-		if (this.exportMode) return;
-		event.preventDefault(); event.stopPropagation(); this.context.resetPointer(this);
-		this.context.openEditor(this.context.entry);
 	}
 }
 function requiredAssetScope(data: MinionData): string {

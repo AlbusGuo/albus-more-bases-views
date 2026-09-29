@@ -1,5 +1,4 @@
-import { Notice, Setting, normalizePath, type App, type TFile } from 'obsidian';
-import { ViewIsolatedModal } from '../../ui/view-isolated-modal';
+import { Setting, type App, type TFile } from 'obsidian';
 import { VaultImageSuggest, listVaultImages } from '../../ui/vault-image-suggest';
 import { VaultMarkdownSuggest } from '../../ui/vault-markdown-suggest';
 import { TextValueSuggest } from '../../ui/text-value-suggest';
@@ -38,6 +37,8 @@ import type { HearthstoneAssets } from './hearthstone-template';
 import { bindArtworkPointerEditor } from '../shared/artwork-pointer-editor';
 import { formatArtworkPosition, parseArtworkPosition, type ArtworkPosition } from '../shared/artwork-position';
 import { InlineMarkdownEditor } from '../../ui/inline-markdown-editor';
+import { AutoSavePropertyModal } from '../shared/auto-save-property-modal';
+import { renameNoteFile } from '../shared/property-editing';
 
 type ModalField = MinionField;
 
@@ -75,9 +76,8 @@ const EDITABLE_FIELDS: readonly ModalField[] = [
 	'rarity', 'cost', 'stats', 'tribes', 'banner',
 ];
 
-export class MinionPropertyModal extends ViewIsolatedModal {
+export class MinionPropertyModal extends AutoSavePropertyModal<ModalField> {
 	private readonly original = new Map<string, unknown>();
-	private readonly dirty = new Set<ModalField>();
 	private suggestions: Array<{ close: () => void }> = [];
 	private imageFiles: TFile[] = [];
 	private noteFiles: TFile[] = [];
@@ -93,8 +93,6 @@ export class MinionPropertyModal extends ViewIsolatedModal {
 	private artworkInputEl: HTMLInputElement | null = null;
 	private releasePositionEditor: (() => void) | null = null;
 	private positionChanged = false;
-	private saveTimer: number | null = null;
-	private saveChain: Promise<void> = Promise.resolve();
 	private closed = false;
 	private descriptionEditor: InlineMarkdownEditor | null = null;
 
@@ -102,7 +100,7 @@ export class MinionPropertyModal extends ViewIsolatedModal {
 		private readonly assets: HearthstoneAssets,
 		private readonly suggestionData: HearthstoneEditorSuggestions,
 		private readonly onClosed?: () => void) {
-		super(app);
+		super(app, '保存卡牌属性失败.');
 	}
 
 	onOpen(): void {
@@ -128,7 +126,7 @@ export class MinionPropertyModal extends ViewIsolatedModal {
 		this.descriptionEditor?.destroy(); this.descriptionEditor = null;
 		this.closeSuggestions(); this.preview.destroy(); this.imageFiles = []; this.noteFiles = [];
 		this.cardNumberValues = []; this.expansionValues = []; this.tribeValues = []; this.contentEl.empty();
-		void this.flushSave().finally(() => { this.original.clear(); this.dirty.clear(); });
+		void this.flushSave(this.formEl).finally(() => { this.original.clear(); this.dirty.clear(); });
 		this.onClosed?.();
 	}
 
@@ -498,21 +496,9 @@ export class MinionPropertyModal extends ViewIsolatedModal {
 	}
 
 	private mark(field: ModalField, immediate = false): void {
-		this.dirty.add(field); this.updatePreview();
-		if (immediate) { this.enqueueSave(); return; }
-		const ownerWindow = this.formEl.ownerDocument.defaultView ?? window;
-		if (this.saveTimer !== null) ownerWindow.clearTimeout(this.saveTimer);
-		this.saveTimer = ownerWindow.setTimeout(() => { this.saveTimer = null; this.enqueueSave(); }, 250);
+		this.updatePreview();
+		this.markForSave(field, this.formEl, immediate);
 	}
-
-	private enqueueSave(): void {
-		if (this.saveTimer !== null) { (this.formEl.ownerDocument.defaultView ?? window).clearTimeout(this.saveTimer); this.saveTimer = null; }
-		this.saveChain = this.saveChain.then(() => this.saveDirty()).catch((error: unknown) => {
-			new Notice(error instanceof Error ? error.message : '保存卡牌属性失败.');
-		});
-	}
-
-	private flushSave(): Promise<void> { this.enqueueSave(); return this.saveChain; }
 
 	private updatePreview(): void {
 		const [firstClass, secondClass] = this.draft.classes;
@@ -567,7 +553,7 @@ export class MinionPropertyModal extends ViewIsolatedModal {
 			writableHearthstoneProperty(this.options, field) !== null;
 	}
 
-	private async saveDirty(): Promise<void> {
+	protected async saveDirty(): Promise<void> {
 		const fields = [...this.dirty];
 		if (!fields.length) return;
 		for (const field of fields) this.dirty.delete(field);
@@ -591,19 +577,7 @@ export class MinionPropertyModal extends ViewIsolatedModal {
 		}
 	}
 	private async renameFile(): Promise<void> {
-		const entered = this.draft.title.trim();
-		if (!entered) throw new Error('文件名不能为空.');
-		if (/[\\/:*?"<>|]/u.test(entered)) throw new Error('文件名包含无效字符.');
-		const extension = this.file.extension ? `.${this.file.extension}` : '';
-		const basename = extension && entered.toLowerCase().endsWith(extension.toLowerCase())
-			? entered.slice(0, -extension.length).trim()
-			: entered;
-		if (!basename) throw new Error('文件名不能为空.');
-		if (basename === this.file.basename) return;
-		const separator = this.file.path.lastIndexOf('/');
-		const folder = separator >= 0 ? this.file.path.slice(0, separator + 1) : '';
-		await this.app.fileManager.renameFile(this.file, normalizePath(`${folder}${basename}${extension}`));
-		this.draft.title = basename;
+		this.draft.title = await renameNoteFile(this.app, this.file, this.draft.title);
 	}
 
 	private serialize(field: ModalField): unknown {

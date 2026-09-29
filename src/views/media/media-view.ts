@@ -18,6 +18,7 @@ import {
 	DEFAULT_CARD_MIN_WIDTH,
 } from '../shared/card-sizing';
 import { CardGalleryView } from '../shared/card-gallery-view';
+import { MEDIA_CARD_EDITOR } from '../shared/card-editor-definitions';
 
 export const MEDIA_VIEW_TYPE = 'albus-more-bases-views-media-diorama';
 export { getMediaViewOptions };
@@ -48,6 +49,7 @@ export class MediaView extends CardGalleryView<
 				itemWidth * getPosterHeightFactor(options?.posterAspectRatio ?? 2 / 3) + 80,
 			columnGap: COMPACT_CARD_GRID_COLUMN_GAP,
 			rowGap: 20,
+			editor: MEDIA_CARD_EDITOR,
 		});
 	}
 
