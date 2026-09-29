@@ -12,6 +12,7 @@ import {
 	createCardMinWidthOption,
 	readCardMinWidth,
 } from '../shared/card-sizing';
+import { readClampedNumber } from '../shared/view-option-helpers';
 
 export interface CelebrityViewOptions {
 	cardMinWidth: number;
@@ -86,10 +87,10 @@ export function readCelebrityViewOptions(
 ): CelebrityViewOptions {
 	return {
 		cardMinWidth: readCardMinWidth(config.get('cardMinWidth')),
-		frameWidth: readNumber(
+		frameWidth: readClampedNumber(
 			config.get('frameWidth'), DEFAULT_FRAME_WIDTH, MIN_FRAME_WIDTH, MAX_FRAME_WIDTH,
 		),
-		matWidth: readNumber(
+		matWidth: readClampedNumber(
 			config.get('matWidth'), DEFAULT_MAT_WIDTH, MIN_MAT_WIDTH, MAX_MAT_WIDTH,
 		),
 		frameMaterial: readFrameMaterial(config.get('frameMaterial')),
@@ -100,15 +101,4 @@ export function readCelebrityViewOptions(
 
 function readFrameMaterial(value: unknown): CelebrityFrameMaterial {
 	return value === 'oak' || value === 'mahogany' ? value : 'walnut';
-}
-
-function readNumber(
-	value: unknown,
-	fallback: number,
-	minimum: number,
-	maximum: number,
-): number {
-	const number = Number(value);
-	if (!Number.isFinite(number)) return fallback;
-	return Math.min(maximum, Math.max(minimum, number));
 }

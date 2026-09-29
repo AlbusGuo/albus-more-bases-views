@@ -1,6 +1,5 @@
 import {
 	Keymap,
-	NullValue,
 	setIcon,
 	type App,
 	type BasesEntry,
@@ -10,6 +9,11 @@ import {
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import { resolveImageSource } from '../../ui/image-source';
 import type { MediaViewOptions } from '../media/media-options';
+import {
+	formatDisplayDate,
+	getPropertyText,
+	isEmptyValue,
+} from '../shared/card-value-utils';
 import {
 	bindMediaRatingSlider,
 	updateMediaRating,
@@ -153,19 +157,19 @@ function updateContent(
 	state: { context: MovieCardContext; contentSignature: string; rating: number },
 ): void {
 	const { context } = state;
-	const title = getPropertyText(context, context.options.titleProperty) ||
+	const title = getPropertyText(context.entry, context.options.titleProperty) ||
 		context.entry.file.basename;
 	const release = formatDisplayDate(
-		getPropertyText(context, context.options.releaseDateProperty),
+		getPropertyText(context.entry, context.options.releaseDateProperty),
 	);
-	const episodes = getPropertyText(context, context.options.episodesProperty);
-	const duration = getPropertyText(context, context.options.durationProperty);
+	const episodes = getPropertyText(context.entry, context.options.episodesProperty);
+	const duration = getPropertyText(context.entry, context.options.durationProperty);
 	const length = episodes || duration;
-	const genre = getPropertyText(context, context.options.genreProperty);
+	const genre = getPropertyText(context.entry, context.options.genreProperty);
 	const watchDate = formatDisplayDate(
-		getPropertyText(context, context.options.watchDateProperty),
+		getPropertyText(context.entry, context.options.watchDateProperty),
 	);
-	const ratingText = getPropertyText(context, context.options.ratingProperty);
+	const ratingText = getPropertyText(context.entry, context.options.ratingProperty);
 	const signature = [title, release, length, genre, watchDate, ratingText,
 		context.options.ratingProperty ?? ''].join('\u0000');
 	if (signature === state.contentSignature) return;
@@ -318,23 +322,4 @@ async function openMovieEntry(
 		context.entry.file.path,
 		'button' in event && event.button === 1 ? 'tab' : Keymap.isModEvent(event),
 	);
-}
-
-function getPropertyText(
-	context: MovieCardContext,
-	property: BasesPropertyId | null,
-): string {
-	if (!property) return '';
-	const value = context.entry.getValue(property);
-	if (!value || value instanceof NullValue) return '';
-	const text = value.toString().trim();
-	return text.toLowerCase() === 'null' ? '' : text;
-}
-
-function formatDisplayDate(value: string): string {
-	return value.match(/^(\d{4}-\d{2}-\d{2})(?:[T ]|$)/)?.[1] ?? value;
-}
-
-function isEmptyValue(value: Value): boolean {
-	return value instanceof NullValue || value.toString().trim() === '';
 }

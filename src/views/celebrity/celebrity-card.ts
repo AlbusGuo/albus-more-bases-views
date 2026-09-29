@@ -1,11 +1,9 @@
 import {
 	Keymap,
-	NullValue,
 	setIcon,
 	type App,
 	type BasesEntry,
 	type BasesPropertyId,
-	type Value,
 } from 'obsidian';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import {
@@ -13,6 +11,7 @@ import {
 	resolveRenderedImageSource,
 } from '../../ui/image-source';
 import type { CelebrityViewOptions } from './celebrity-options';
+import { isEmptyValue } from '../shared/card-value-utils';
 import {
 	getCelebrityDetailsSignature,
 	updateCelebrityDetails,
@@ -166,8 +165,4 @@ async function openEntry(
 		context.entry.file.path,
 		event.button === 1 ? 'tab' : Keymap.isModEvent(event),
 	);
-}
-
-function isEmptyValue(value: Value): boolean {
-	return value instanceof NullValue || value.toString().trim() === '';
 }

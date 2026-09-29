@@ -1,5 +1,5 @@
 import type { BasesEntry } from 'obsidian';
-import { unwrapBasesValue } from './property-editing';
+import { unwrapBasesValue, valueText } from './property-editing';
 import type { CardPropertyEditorDefinition } from './card-property-editor-types';
 
 export function collectCardPropertySuggestions<Options>(
@@ -37,14 +37,6 @@ function collectValues(value: unknown, values: Set<string>): void {
 		for (const item of value) collectValues(item, values);
 		return;
 	}
-	const text = scalarText(value);
+	const text = valueText(value);
 	if (text && text.toLowerCase() !== 'null') values.add(text);
-}
-
-function scalarText(value: unknown): string {
-	if (
-		typeof value === 'string' || typeof value === 'number' ||
-		typeof value === 'boolean' || typeof value === 'bigint'
-	) return String(value).trim();
-	return '';
 }

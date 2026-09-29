@@ -3,6 +3,7 @@ import type {
 	BasesPropertyId,
 	BasesViewConfig,
 } from 'obsidian';
+import { readClampedNumber } from '../shared/view-option-helpers';
 import {
 	createMarkdownOpenModeOption,
 	readMarkdownOpenMode,
@@ -85,11 +86,11 @@ export function getMapViewOptions(): BasesAllOptions[] {
 }
 
 export function readMapViewOptions(config: BasesViewConfig): MapViewOptions {
-	const minZoom = readNumber(config.get('minZoom'), 0, 0, 24);
-	const maxZoom = readNumber(config.get('maxZoom'), 18, minZoom, 24);
+	const minZoom = readClampedNumber(config.get('minZoom'), 0, 0, 24);
+	const maxZoom = readClampedNumber(config.get('maxZoom'), 18, minZoom, 24);
 	return {
-		mapHeight: readNumber(config.get('mapHeight'), DEFAULT_MAP_HEIGHT, 200, 800),
-		defaultZoom: readNumber(config.get('defaultZoom'), DEFAULT_MAP_ZOOM, minZoom, maxZoom),
+		mapHeight: readClampedNumber(config.get('mapHeight'), DEFAULT_MAP_HEIGHT, 200, 800),
+		defaultZoom: readClampedNumber(config.get('defaultZoom'), DEFAULT_MAP_ZOOM, minZoom, maxZoom),
 		minZoom,
 		maxZoom,
 		coordinatesProperty: config.getAsPropertyId('coordinatesProperty'),
@@ -126,11 +127,6 @@ function propertyOption(key: string, displayName: string, placeholder: string) {
 	};
 }
 
-function readNumber(value: unknown, fallback: number, min: number, max: number): number {
-	const number = Number(value);
-	if (!Number.isFinite(number)) return fallback;
-	return Math.min(max, Math.max(min, number));
-}
 
 function readTextList(value: unknown): string[] {
 	if (Array.isArray(value)) {

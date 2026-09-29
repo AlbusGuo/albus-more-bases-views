@@ -14,6 +14,7 @@ import {
 	renameNoteFile,
 	savePropertyChanges,
 	unwrapBasesValue,
+	valueText,
 	writablePropertyName,
 } from '../shared/property-editing';
 import type { OperatorCardContext, OperatorCardController } from './operator-card';
@@ -325,13 +326,6 @@ export class OperatorPropertyModal extends AutoSavePropertyModal<OperatorField> 
 	private readEntryValue(id: BasesPropertyId | null): unknown { return id ? unwrapBasesValue(this.context.entry.getValue(id)) : undefined; }
 }
 
-function valueText(value: unknown): string {
-	if (value === null || value === undefined) return '';
-	if (Array.isArray(value)) return value.map(valueText).filter(Boolean).join(', ');
-	if (typeof value === 'string') return value.trim();
-	if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return `${value}`;
-	return '';
-}
 function readImageList(value: unknown): string[] {
 	const result: string[] = [];
 	for (const text of readValueList(value)) {

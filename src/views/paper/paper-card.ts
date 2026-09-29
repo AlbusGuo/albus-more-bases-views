@@ -1,6 +1,5 @@
 import {
 	Keymap,
-	NullValue,
 	type App,
 	type BasesEntry,
 	type BasesPropertyId,
@@ -12,6 +11,7 @@ import {
 	updatePaperDetails,
 } from './paper-properties';
 import { createReadingActions } from '../shared/reading-actions';
+import { getPropertyText } from '../shared/card-value-utils';
 
 const PAPER_READING_ACTIONS = {
 	actionClass: 'mbv-paper-action',
@@ -60,18 +60,18 @@ export function createPaperCard(
 
 	const update = (context: PaperCardContext): void => {
 		state.context = context;
-		const coverTitle = getPropertyText(context, context.options.titleProperty);
+		const coverTitle = getPropertyText(context.entry, context.options.titleProperty);
 		const accessibleTitle = coverTitle || context.entry.file.basename;
 		coverLinkEl.dataset.href = context.entry.file.path;
 		coverLinkEl.setAttribute('href', context.entry.file.path);
 		linkLabelEl.setText(`打开 "${accessibleTitle}"`);
 		coverTitleEl.setText(accessibleTitle);
 
-		const authors = getPropertyText(context, context.options.authorProperty);
+		const authors = getPropertyText(context.entry, context.options.authorProperty);
 		coverAuthorsEl.setText(authors);
 		coverAuthorsEl.classList.toggle('is-hidden', authors.length === 0);
 
-		const pages = getPropertyText(context, context.options.pageCountProperty);
+		const pages = getPropertyText(context.entry, context.options.pageCountProperty);
 		coverTagEl.setText(pages);
 		coverTagEl.classList.toggle('is-hidden', pages.length === 0);
 
@@ -122,15 +122,4 @@ async function openPaperEntry(
 		context.entry.file.path,
 		event.button === 1 ? 'tab' : Keymap.isModEvent(event),
 	);
-}
-
-function getPropertyText(
-	context: PaperCardContext,
-	property: BasesPropertyId | null,
-): string {
-	if (!property) return '';
-	const value = context.entry.getValue(property);
-	if (!value || value instanceof NullValue) return '';
-	const text = value.toString().trim();
-	return text.toLowerCase() === 'null' ? '' : text;
 }

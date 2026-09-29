@@ -12,6 +12,7 @@ import {
 	createCardMinWidthOption,
 	readCardMinWidth,
 } from '../shared/card-sizing';
+import { propertyOption } from '../shared/view-option-helpers';
 
 export const PROJECT_METRICS = [
 	{ key: 'author', label: 'Author', option: 'showAuthor', name: '作者' },
@@ -101,8 +102,4 @@ export function readProjectViewOptions(
 			),
 		),
 	};
-}
-
-function propertyOption(key: string, displayName: string, placeholder: string) {
-	return { type: 'property' as const, key, displayName, placeholder };
 }

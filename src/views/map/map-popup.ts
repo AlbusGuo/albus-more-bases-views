@@ -12,6 +12,7 @@ import {
 	resolveRenderedImageSource,
 } from '../../ui/image-source';
 import type { MapViewOptions } from './map-options';
+import { getPropertyText } from '../shared/card-value-utils';
 
 export interface MapPopupContext {
 	app: App;
@@ -35,7 +36,7 @@ export function createMapPopupContent(context: MapPopupContext): HTMLElement {
 	renderImage(rootEl, context);
 	const titleEl = rootEl.createEl('a', {
 		cls: 'mbv-map-popup-title internal-link',
-		text: getPropertyText(context, context.options.titleProperty) ||
+		text: getPropertyText(context.entry, context.options.titleProperty) ||
 			context.entry.file.basename,
 		attr: {
 			href: context.entry.file.path,
@@ -85,7 +86,7 @@ function renderAppearanceProperties(
 			cls: 'mbv-map-popup-label',
 			text: context.getDisplayName(property),
 		});
-		const value = getPropertyText(context, property);
+		const value = getPropertyText(context.entry, property);
 		const valueEl = rowEl.createSpan('mbv-map-popup-value');
 		if (item.kind === 'icon') renderIconValue(valueEl, value);
 		else renderColorValue(valueEl, value);
@@ -201,15 +202,4 @@ async function openEntry(
 		context.entry.file.path,
 		event.button === 1 ? 'tab' : Keymap.isModEvent(event),
 	);
-}
-
-function getPropertyText(
-	context: MapPopupContext,
-	property: BasesPropertyId | null,
-): string {
-	if (!property) return '';
-	const value = context.entry.getValue(property);
-	if (!value || value instanceof NullValue) return '';
-	const text = value.toString().trim();
-	return text.toLowerCase() === 'null' ? '' : text;
 }

@@ -12,6 +12,7 @@ import {
 	createCardMinWidthOption,
 	readCardMinWidth,
 } from '../shared/card-sizing';
+import { propertyOption } from '../shared/view-option-helpers';
 
 export interface GameViewOptions {
 	cardMinWidth: number;
@@ -54,8 +55,4 @@ export function readGameViewOptions(config: BasesViewConfig): GameViewOptions {
 		ratingProperty: config.getAsPropertyId('ratingProperty'),
 		markdownOpenMode: readMarkdownOpenMode(config),
 	};
-}
-
-function propertyOption(key: string, displayName: string, placeholder: string) {
-	return { type: 'property' as const, key, displayName, placeholder };
 }

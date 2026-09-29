@@ -1,7 +1,6 @@
 import {
 	Keymap,
 	Notice,
-	NullValue,
 	setIcon,
 	type App,
 	type BasesEntry,
@@ -21,6 +20,7 @@ import {
 	type ProjectMetricKey,
 	type ProjectViewOptions,
 } from './project-options';
+import { getPropertyText } from '../shared/card-value-utils';
 import {
 	getProjectDetailsSignature,
 	updateProjectDetails,
@@ -110,12 +110,12 @@ export function createProjectCard(
 
 	const update = (context: ProjectCardContext): void => {
 		state.context = context;
-		const title = getPropertyText(context, context.options.titleProperty) ||
+		const title = getPropertyText(context.entry, context.options.titleProperty) ||
 			context.entry.file.basename;
 		terminalEl.dataset.href = context.entry.file.path;
 
 		const repositoryPath = normalizeRepositoryPath(
-			getPropertyText(context, context.options.repoPathProperty),
+			getPropertyText(context.entry, context.options.repoPathProperty),
 		);
 		const isPublic = Boolean(repositoryPath) &&
 			Boolean(context.options.statusProperty) &&
@@ -125,7 +125,7 @@ export function createProjectCard(
 					: null,
 			);
 		const authors = formatAuthors(
-			getPropertyText(context, context.options.authorProperty),
+			getPropertyText(context.entry, context.options.authorProperty),
 		);
 		const terminalSignature = [
 			title,
@@ -383,17 +383,6 @@ async function openProjectEntry(
 			? 'tab'
 			: Keymap.isModEvent(event),
 	);
-}
-
-function getPropertyText(
-	context: ProjectCardContext,
-	property: BasesPropertyId | null,
-): string {
-	if (!property) return '';
-	const value = context.entry.getValue(property);
-	if (!value || value instanceof NullValue) return '';
-	const text = value.toString().trim();
-	return text.toLowerCase() === 'null' ? '' : text;
 }
 
 function formatAuthors(value: string): string {

@@ -1,11 +1,9 @@
 import {
 	Keymap,
-	NullValue,
 	setIcon,
 	type App,
 	type BasesEntry,
 	type BasesPropertyId,
-	type Value,
 } from 'obsidian';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import {
@@ -13,6 +11,7 @@ import {
 	resolveRenderedImageSource,
 } from '../../ui/image-source';
 import type { GameViewOptions } from './game-options';
+import { getPropertyText, isEmptyValue } from '../shared/card-value-utils';
 import { renderGameCaseLogo } from './game-logo';
 import {
 	getGameDetailsSignature,
@@ -146,12 +145,12 @@ function updateContent(
 	state: { context: GameCardContext; contentSignature: string; rating: number },
 ): void {
 	const { context } = state;
-	const title = getPropertyText(context, context.options.titleProperty) ||
+	const title = getPropertyText(context.entry, context.options.titleProperty) ||
 		context.entry.file.basename;
-	const release = getPropertyText(context, context.options.releaseDateProperty);
+	const release = getPropertyText(context.entry, context.options.releaseDateProperty);
 	const year = release.match(/\d{4}/)?.[0] ?? release.split('-')[0] ?? '';
-	const genre = getPropertyText(context, context.options.genreProperty);
-	const rating = getPropertyText(context, context.options.ratingProperty);
+	const genre = getPropertyText(context.entry, context.options.genreProperty);
+	const rating = getPropertyText(context.entry, context.options.ratingProperty);
 	const signature = [title, year, genre, rating, context.options.ratingProperty ?? '']
 		.join('\u0000');
 	if (signature === state.contentSignature) return;
@@ -253,21 +252,6 @@ async function openGameEntry(
 	);
 }
 
-function getPropertyText(
-	context: GameCardContext,
-	property: BasesPropertyId | null,
-): string {
-	if (!property) return '';
-	const value = context.entry.getValue(property);
-	if (!value || value instanceof NullValue) return '';
-	const text = value.toString().trim();
-	return text.toLowerCase() === 'null' ? '' : text;
-}
-
 function splitGenre(value: string): string {
 	return value.split(/[,\uFF0C\u3001\s]+/u).map((item) => item.trim()).filter(Boolean).join(' | ');
-}
-
-function isEmptyValue(value: Value): boolean {
-	return value instanceof NullValue || value.toString().trim() === '';
 }

@@ -1,10 +1,8 @@
 import {
 	Keymap,
-	NullValue,
 	type App,
 	type BasesEntry,
 	type BasesPropertyId,
-	type Value,
 } from 'obsidian';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import { renderBookCover } from './book-cover';
@@ -15,6 +13,7 @@ import {
 	updateBookDetails,
 } from './book-properties';
 import { createReadingActions } from '../shared/reading-actions';
+import { isEmptyValue } from '../shared/card-value-utils';
 
 const BOOK_READING_ACTIONS = {
 	actionClass: 'mbv-book-action',
@@ -167,8 +166,4 @@ async function openBookEntry(
 		context.entry.file.path,
 		event.button === 1 ? 'tab' : Keymap.isModEvent(event),
 	);
-}
-
-function isEmptyValue(value: Value | null): boolean {
-	return value === null || value instanceof NullValue || value.toString().trim() === '';
 }

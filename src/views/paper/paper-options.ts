@@ -13,6 +13,7 @@ import {
 	createCardMinWidthOption,
 	readCardMinWidth,
 } from '../shared/card-sizing';
+import { propertyOption } from '../shared/view-option-helpers';
 
 export interface PaperViewOptions {
 	cardMinWidth: number;
@@ -71,8 +72,4 @@ export function readPaperViewOptions(config: BasesViewConfig): PaperViewOptions 
 		openWith: config.get('openWith') === 'system' ? 'system' : 'obsidian',
 		markdownOpenMode: readMarkdownOpenMode(config),
 	};
-}
-
-function propertyOption(key: string, displayName: string, placeholder: string) {
-	return { type: 'property' as const, key, displayName, placeholder };
 }

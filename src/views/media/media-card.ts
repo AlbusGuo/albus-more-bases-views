@@ -1,15 +1,18 @@
 import {
 	Keymap,
-	NullValue,
 	setIcon,
 	type App,
 	type BasesEntry,
 	type BasesPropertyId,
-	type Value,
 } from 'obsidian';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import { resolveImageSource } from '../../ui/image-source';
 import type { MediaViewOptions } from './media-options';
+import {
+	formatDisplayDate,
+	getPropertyText,
+	isEmptyValue,
+} from '../shared/card-value-utils';
 import {
 	getMediaDetailsSignature,
 	updateMediaDetails,
@@ -155,19 +158,19 @@ function updateContent(
 	state: { context: MediaCardContext; contentSignature: string; rating: number },
 ): void {
 	const { context } = state;
-	const title = getPropertyText(context, context.options.titleProperty) ||
+	const title = getPropertyText(context.entry, context.options.titleProperty) ||
 		context.entry.file.basename;
 	const release = formatDisplayDate(
-		getPropertyText(context, context.options.releaseDateProperty),
+		getPropertyText(context.entry, context.options.releaseDateProperty),
 	);
-	const genre = getPropertyText(context, context.options.genreProperty);
-	const episodes = getPropertyText(context, context.options.episodesProperty);
-	const duration = getPropertyText(context, context.options.durationProperty);
+	const genre = getPropertyText(context.entry, context.options.genreProperty);
+	const episodes = getPropertyText(context.entry, context.options.episodesProperty);
+	const duration = getPropertyText(context.entry, context.options.durationProperty);
 	const length = episodes || duration;
 	const watchDate = formatDisplayDate(
-		getPropertyText(context, context.options.watchDateProperty),
+		getPropertyText(context.entry, context.options.watchDateProperty),
 	);
-	const ratingText = getPropertyText(context, context.options.ratingProperty);
+	const ratingText = getPropertyText(context.entry, context.options.ratingProperty);
 	const signature = [title, release, genre, length, watchDate, ratingText,
 		context.options.ratingProperty ?? ''].join('\u0000');
 	if (signature === state.contentSignature) return;
@@ -267,25 +270,6 @@ async function openMediaEntry(
 	);
 }
 
-function getPropertyText(
-	context: MediaCardContext,
-	property: BasesPropertyId | null,
-): string {
-	if (!property) return '';
-	const value = context.entry.getValue(property);
-	if (!value || value instanceof NullValue) return '';
-	const text = value.toString().trim();
-	return text.toLowerCase() === 'null' ? '' : text;
-}
-
-function formatDisplayDate(value: string): string {
-	return value.match(/^(\d{4}-\d{2}-\d{2})(?:[T ]|$)/)?.[1] ?? value;
-}
-
 function formatGenres(value: string): string {
 	return value.split(/[,\uFF0C\u3001\s]+/u).map((genre) => genre.trim()).filter(Boolean).join(' / ');
-}
-
-function isEmptyValue(value: Value): boolean {
-	return value instanceof NullValue || value.toString().trim() === '';
 }

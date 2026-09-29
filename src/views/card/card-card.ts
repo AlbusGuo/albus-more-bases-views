@@ -1,9 +1,7 @@
 import {
-	NullValue,
 	type App,
 	type BasesEntry,
 	type BasesPropertyId,
-	type Value,
 } from 'obsidian';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import {
@@ -16,6 +14,7 @@ import {
 } from './card-properties';
 import { applyCardMaterial } from '../shared/card-material-surface';
 import type { CardViewOptions } from './card-options';
+import { isEmptyValue } from '../shared/card-value-utils';
 
 export interface CollectibleCardContext {
 	app: App;
@@ -253,8 +252,4 @@ function rgbToHsl(
 		else hue = 60 * ((red - green) / delta + 4);
 	}
 	return { hue: (hue + 360) % 360, saturation, lightness };
-}
-
-function isEmptyValue(value: Value): boolean {
-	return value instanceof NullValue || value.toString().trim() === '';
 }

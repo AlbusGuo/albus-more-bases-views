@@ -1,15 +1,14 @@
 import {
 	Keymap,
-	NullValue,
 	setIcon,
 	type App,
 	type BasesEntry,
 	type BasesPropertyId,
-	type Value,
 } from 'obsidian';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import { resolveImageSource } from '../../ui/image-source';
 import type { CourseViewOptions } from './course-options';
+import { isEmptyValue } from '../shared/card-value-utils';
 import {
 	getCourseDetailsSignature,
 	updateCourseDetails,
@@ -224,8 +223,4 @@ function getVisibleTitle(context: CourseCardContext): string {
 	return titleProperty
 		? context.entry.getValue(titleProperty)?.toString().trim() ?? ''
 		: '';
-}
-
-function isEmptyValue(value: Value): boolean {
-	return value instanceof NullValue || value.toString().trim() === '';
 }

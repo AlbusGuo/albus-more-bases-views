@@ -1,5 +1,5 @@
 import { ListValue, StringValue, type Value } from 'obsidian';
-import type { getEditablePropertyType } from './property-editing';
+import { valueText, type getEditablePropertyType } from './property-editing';
 import type {
 	CardPropertyEditorField,
 	CardPropertyFieldKind,
@@ -101,14 +101,4 @@ function readBoolean(value: unknown): boolean {
 	if (typeof value === 'number') return value !== 0;
 	const normalized = valueText(value).toLowerCase();
 	return ['true', 'yes', 'x', '- [x]', 'done', '1'].includes(normalized);
-}
-
-function valueText(value: unknown): string {
-	if (value === null || value === undefined) return '';
-	if (Array.isArray(value)) return value.map(valueText).filter(Boolean).join(', ');
-	if (
-		typeof value === 'string' || typeof value === 'number' ||
-		typeof value === 'boolean' || typeof value === 'bigint'
-	) return String(value).trim();
-	return '';
 }

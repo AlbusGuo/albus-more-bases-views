@@ -13,6 +13,7 @@ import {
 	readCardMinWidth,
 } from '../shared/card-sizing';
 import { createCardMaterialOption, readCardMaterialSelection, type CardMaterialSelection } from '../shared/card-material-surface';
+import { propertyOption, readClampedNumber } from '../shared/view-option-helpers';
 export type { CardMaterialSelection } from '../shared/card-material-surface';
 
 export interface CardViewOptions {
@@ -65,20 +66,11 @@ export function getCardViewOptions(): BasesAllOptions[] {
 export function readCardViewOptions(config: BasesViewConfig): CardViewOptions {
 	return {
 		cardMinWidth: readCardMinWidth(config.get('cardMinWidth')),
-		aspectRatio: readNumber(config.get('aspectRatio'), 0.718, 0.5, 1.2),
+		aspectRatio: readClampedNumber(config.get('aspectRatio'), 0.718, 0.5, 1.2),
 		frontProperty: config.getAsPropertyId('frontProperty'),
 		material: readCardMaterialSelection(config),
 		goldFrame: config.get('goldFrame') === true,
 		clickToExpand: config.get('clickToExpand') !== false,
 		markdownOpenMode: readMarkdownOpenMode(config),
 	};
-}
-
-function propertyOption(key: string, displayName: string, placeholder: string) {
-	return { type: 'property' as const, key, displayName, placeholder };
-}
-
-function readNumber(value: unknown, fallback: number, min: number, max: number): number {
-	const number = Number(value);
-	return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
 }

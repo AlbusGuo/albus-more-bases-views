@@ -9,6 +9,7 @@ import {
 	type MarkdownOpenMode,
 } from '../../services/markdown-navigation';
 import { MAX_CARD_WIDTH, MIN_CARD_WIDTH } from '../shared/card-sizing';
+import { propertyOption } from '../shared/view-option-helpers';
 
 const DEFAULT_TIER_CARD_WIDTH = 70;
 
@@ -62,8 +63,4 @@ function readTierCardWidth(value: unknown): number {
 	const width = Number(value);
 	if (!Number.isFinite(width)) return DEFAULT_TIER_CARD_WIDTH;
 	return Math.min(MAX_CARD_WIDTH, Math.max(MIN_CARD_WIDTH, width));
-}
-
-function propertyOption(key: string, displayName: string, placeholder: string) {
-	return { type: 'property' as const, key, displayName, placeholder };
 }

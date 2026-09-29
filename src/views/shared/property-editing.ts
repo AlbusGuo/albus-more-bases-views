@@ -80,6 +80,16 @@ export function unwrapBasesValue(value: Value | null): unknown {
 	return value.toString();
 }
 
+export function valueText(value: unknown): string {
+	if (value === null || value === undefined) return '';
+	if (Array.isArray(value)) return value.map(valueText).filter(Boolean).join(', ');
+	if (
+		typeof value === 'string' || typeof value === 'number' ||
+		typeof value === 'boolean' || typeof value === 'bigint'
+	) return String(value).trim();
+	return '';
+}
+
 export async function savePropertyChanges(
 	app: App,
 	file: TFile,

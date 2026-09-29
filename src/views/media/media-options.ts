@@ -12,6 +12,7 @@ import {
 	createCardMinWidthOption,
 	readCardMinWidth,
 } from '../shared/card-sizing';
+import { propertyOption } from '../shared/view-option-helpers';
 
 export interface MediaViewOptions {
 	cardMinWidth: number;
@@ -91,8 +92,4 @@ function readPosterAspectRatio(value: unknown): number {
 	const number = Number(value);
 	if (!Number.isFinite(number)) return DEFAULT_POSTER_ASPECT_RATIO;
 	return Math.min(MAX_POSTER_ASPECT_RATIO, Math.max(MIN_POSTER_ASPECT_RATIO, number));
-}
-
-function propertyOption(key: string, displayName: string, placeholder: string) {
-	return { type: 'property' as const, key, displayName, placeholder };
 }

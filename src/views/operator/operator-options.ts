@@ -12,6 +12,7 @@ import {
 	createCardMinWidthOption,
 	readCardMinWidth,
 } from '../shared/card-sizing';
+import { propertyOption } from '../shared/view-option-helpers';
 export interface OperatorViewOptions {
 	cardMinWidth: number;
 
@@ -84,8 +85,4 @@ export function readOperatorViewOptions(config: BasesViewConfig): OperatorViewOp
 		factionProperty: config.getAsPropertyId('factionProperty'),
 		markdownOpenMode: readMarkdownOpenMode(config),
 	};
-}
-
-function propertyOption(key: string, displayName: string, placeholder: string) {
-	return { type: 'property' as const, key, displayName, placeholder };
 }
