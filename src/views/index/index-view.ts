@@ -7,6 +7,7 @@ import {
 	type QueryController,
 } from 'obsidian';
 import type { BasesViewTabsService } from '../../services/bases-view-tabs';
+import { attachBasesSearchProperties } from '../../services/bases-search-properties';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import { AnimationFrameTask } from '../../ui/animation-frame-task';
 import { IndexCategoryDragController } from './index-category-drag';
@@ -59,6 +60,10 @@ export class IndexView extends BasesView {
 		viewTabs: BasesViewTabsService,
 	) {
 		super(controller);
+		this.register(attachBasesSearchProperties(
+			controller,
+			() => readIndexViewOptions(this.config),
+		));
 		viewTabs.attach(controller, parentEl);
 		const embedded = this.isEmbedded();
 		this.parentEl.classList.toggle('mbv-index-host', !embedded);

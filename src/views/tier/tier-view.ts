@@ -9,6 +9,7 @@ import {
 	type QueryController,
 } from 'obsidian';
 import type { BasesViewTabsService } from '../../services/bases-view-tabs';
+import { attachBasesSearchProperties } from '../../services/bases-search-properties';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import { AnimationFrameTask } from '../../ui/animation-frame-task';
 import { ViewportMediaLoader } from '../../ui/viewport-media-loader';
@@ -70,6 +71,10 @@ export class TierView extends BasesView {
 		viewTabs: BasesViewTabsService,
 	) {
 		super(controller);
+		this.register(attachBasesSearchProperties(
+			controller,
+			() => readTierViewOptions(this.config),
+		));
 		viewTabs.attach(controller, parentEl);
 		this.containerEl = parentEl.createDiv({
 			cls: 'mbv-tier-view',

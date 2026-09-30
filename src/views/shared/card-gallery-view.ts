@@ -8,6 +8,7 @@ import {
 	type QueryController,
 } from 'obsidian';
 import type { BasesViewTabsService } from '../../services/bases-view-tabs';
+import { attachBasesSearchProperties } from '../../services/bases-search-properties';
 import { CardGalleryHtmlExporter } from '../../services/card-gallery-html-exporter';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import { AnimationFrameTask } from '../../ui/animation-frame-task';
@@ -96,6 +97,10 @@ export abstract class CardGalleryView<
 		>,
 	) {
 		super(controller);
+		this.register(attachBasesSearchProperties(
+			controller,
+			() => definition.readOptions(this.config),
+		));
 		viewTabs.attach(controller, parentEl);
 		this.containerEl = parentEl.createDiv({
 			cls: definition.viewClass,

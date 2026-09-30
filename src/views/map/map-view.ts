@@ -12,6 +12,7 @@ import {
 } from 'obsidian';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { BasesViewTabsService } from '../../services/bases-view-tabs';
+import { attachBasesSearchProperties } from '../../services/bases-search-properties';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import { AnimationFrameTask } from '../../ui/animation-frame-task';
 import { createMapControls } from './map-controls';
@@ -77,6 +78,10 @@ export class MapView extends BasesView {
 		viewTabs: BasesViewTabsService,
 	) {
 		super(controller);
+		this.register(attachBasesSearchProperties(
+			controller,
+			() => readMapViewOptions(this.config),
+		));
 		viewTabs.attach(controller, parentEl);
 		this.containerEl = parentEl.createDiv({
 			cls: 'mbv-map-view is-loading',
