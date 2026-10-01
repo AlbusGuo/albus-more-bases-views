@@ -17,8 +17,9 @@
 	display: flex;
 	min-width: 0;
 	max-width: 70%;
-	height: 100%;
+	height: var(--input-height);
 	flex: 0 1 auto;
+	align-self: center;
 	align-items: center;
 	gap: var(--size-2-1);
 }
@@ -394,7 +395,17 @@
 
 .bases-header.mbv-bases-tabs-enabled .bases-toolbar-result-count {
 	min-width: 0;
+	height: var(--input-height);
 	flex: 0 1 auto;
+	align-self: center;
+	align-items: center;
+}
+
+.bases-header.mbv-bases-tabs-enabled .bases-toolbar-result-count .text-icon-button {
+	height: var(--input-height);
+	min-height: var(--input-height);
+	box-sizing: border-box;
+	margin-block: 0;
 }
 
 @container bases-header (width < 540px) {
