@@ -4626,18 +4626,8 @@ button.mbv-map-color-swatch:focus-visible {
 	border-bottom: 1px solid var(--background-modifier-border);
 	background: var(--background-primary);
 	align-items: center;
+	justify-content: flex-end;
 	gap: 12px;
-}
-
-.mbv-index-search {
-	width: min(560px, 100%);
-	min-width: 120px;
-	flex: 1 1 auto;
-}
-
-.mbv-index-search .search-input-container,
-.mbv-index-search input {
-	width: 100%;
 }
 
 .mbv-index-result-count {

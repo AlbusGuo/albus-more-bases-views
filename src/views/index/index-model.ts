@@ -15,8 +15,6 @@ export interface IndexNote {
 	timeText: string;
 	categories: string[];
 	categoryLeaves: string[];
-	searchText: string;
-	originalIndex: number;
 }
 
 export interface IndexCategory {
@@ -34,9 +32,8 @@ export type IndexSelection =
 export function buildIndexNotes(
 	entries: readonly BasesEntry[],
 	options: IndexViewOptions,
-	visibleProperties: readonly BasesPropertyId[],
 ): IndexNote[] {
-	return entries.map((entry, originalIndex) => {
+	return entries.map((entry) => {
 		const title = getEntryText(entry, options.titleProperty) ||
 			entry.file.basename || '无标题';
 		const categoryValues = getEntryTextList(entry, options.categoryProperty)
@@ -45,21 +42,12 @@ export function buildIndexNotes(
 		const categories = categoryValues.length === 0
 			? [INDEX_OTHER_CATEGORY]
 			: uniqueTexts(categoryValues);
-		const searchableProperties = visibleProperties
-			.map((property) => getEntryText(entry, property))
-			.filter(Boolean);
 		return {
 			entry,
 			title,
 			timeText: formatIndexTime(getEntryText(entry, options.timeProperty)),
 			categories,
 			categoryLeaves: uniqueTexts(categories.map(getCategoryLeaf)),
-			searchText: normalizeSearchText([
-				title,
-				...categories,
-				...searchableProperties,
-			].join('\n')),
-			originalIndex,
 		};
 	});
 }
@@ -96,11 +84,8 @@ export function buildIndexCategories(
 export function filterIndexNotes(
 	notes: readonly IndexNote[],
 	selection: IndexSelection,
-	query: string,
 ): IndexNote[] {
-	const normalizedQuery = normalizeSearchText(query);
-	const tokens = normalizedQuery.split(/\s+/u).filter(Boolean);
-	const filtered = notes.filter((note) => {
+	return notes.filter((note) => {
 		if (selection.mode === 'other' && !note.categories.includes(INDEX_OTHER_CATEGORY)) {
 			return false;
 		}
@@ -109,13 +94,7 @@ export function filterIndexNotes(
 				category === selection.category || category.startsWith(`${selection.category}/`),
 			)) return false;
 		}
-		return tokens.every((token) => note.searchText.includes(token));
-	});
-	if (tokens.length === 0) return filtered;
-	return filtered.sort((left, right) => {
-		const leftScore = getSearchScore(left, normalizedQuery);
-		const rightScore = getSearchScore(right, normalizedQuery);
-		return rightScore - leftScore || left.originalIndex - right.originalIndex;
+		return true;
 	});
 }
 
@@ -207,20 +186,6 @@ function formatIndexTime(value: string): string {
 		/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?$/u,
 	);
 	return match ? `${match[1]} ${match[2]}` : value;
-}
-
-function getSearchScore(note: IndexNote, query: string): number {
-	const title = normalizeSearchText(note.title);
-	if (title === query) return 1000;
-	if (title.startsWith(query)) return 700;
-	if (title.includes(query)) return 500;
-	const basename = normalizeSearchText(note.entry.file.basename);
-	if (basename.startsWith(query)) return 350;
-	return 100;
-}
-
-function normalizeSearchText(value: string): string {
-	return value.trim().toLocaleLowerCase('zh-CN');
 }
 
 function uniqueTexts(values: readonly string[]): string[] {

@@ -1,9 +1,7 @@
 import {
 	BasesView,
 	Keymap,
-	SearchComponent,
 	setIcon,
-	type BasesPropertyId,
 	type QueryController,
 } from 'obsidian';
 import type { BasesViewTabsService } from '../../services/bases-view-tabs';
@@ -37,7 +35,6 @@ export class IndexView extends BasesView {
 	private readonly containerEl: HTMLElement;
 	private readonly navEl: HTMLElement;
 	private readonly resultCountEl: HTMLElement;
-	private readonly search: SearchComponent;
 	private readonly list: IndexVirtualList;
 	private readonly noteActions: IndexNoteActions;
 	private readonly categoryDrag: IndexCategoryDragController;
@@ -45,13 +42,10 @@ export class IndexView extends BasesView {
 	private options: IndexViewOptions | null = null;
 	private notes: IndexNote[] = [];
 	private categories: IndexCategory[] = [];
-	private visibleProperties: BasesPropertyId[] = [];
 	private filteredNotes: IndexNote[] = [];
 	private selection: IndexSelection = { mode: 'all' };
 	private selectedPath: string | null = null;
 	private readonly collapsedCategories = new Set<string>();
-	private query = '';
-	private filterFrame: number | null = null;
 
 	constructor(
 		controller: QueryController,
@@ -75,18 +69,6 @@ export class IndexView extends BasesView {
 		this.containerEl.classList.toggle('is-embedded', embedded);
 		this.noteActions = new IndexNoteActions(this.app);
 		const toolbarEl = this.containerEl.createDiv('mbv-index-toolbar');
-		const searchWrapEl = toolbarEl.createDiv('mbv-index-search');
-		this.search = new SearchComponent(searchWrapEl)
-			.setPlaceholder('搜索标题, 分类或属性');
-		this.search.onChange((value) => {
-			this.query = value;
-			this.scheduleFilter();
-		});
-		this.search.inputEl.addEventListener('keydown', (event) => {
-			if (event.key !== 'ArrowDown') return;
-			event.preventDefault();
-			this.list.focusSelected();
-		});
 		this.resultCountEl = toolbarEl.createDiv('mbv-index-result-count');
 		const bodyEl = this.containerEl.createDiv('mbv-index-body');
 		this.navEl = bodyEl.createEl('nav', {
@@ -118,15 +100,12 @@ export class IndexView extends BasesView {
 	}
 
 	focus(): void {
-		this.search.inputEl.focus();
+		this.list.focusSelected();
 	}
 
 	onunload(): void {
 		this.dataUpdateTask.cancel();
 		this.parentEl.removeClass('mbv-index-host');
-		const ownerWindow = this.containerEl.ownerDocument.defaultView;
-		if (this.filterFrame !== null) ownerWindow?.cancelAnimationFrame(this.filterFrame);
-		this.filterFrame = null;
 		this.list.destroy();
 		this.categoryDrag.destroy();
 		this.navigation.closeSidePanel(this.containerEl);
@@ -134,28 +113,17 @@ export class IndexView extends BasesView {
 
 	private applyDataUpdate(): void {
 		this.options = readIndexViewOptions(this.config);
-		this.visibleProperties = this.config.getOrder();
 		const entries = this.data.groupedData.flatMap((group) => group.entries);
-		this.notes = buildIndexNotes(entries, this.options, this.visibleProperties);
+		this.notes = buildIndexNotes(entries, this.options);
 		this.categories = buildIndexCategories(this.notes, this.options.categoryOrder);
 		this.validateSelection();
 		this.renderNavigation();
-		this.applyFilter();
+		this.applySelection();
 	}
 
-	private scheduleFilter(): void {
-		if (this.filterFrame !== null) return;
-		const ownerWindow = this.containerEl.ownerDocument.defaultView;
-		if (!ownerWindow) return;
-		this.filterFrame = ownerWindow.requestAnimationFrame(() => {
-			this.filterFrame = null;
-			this.applyFilter();
-		});
-	}
-
-	private applyFilter(): void {
+	private applySelection(): void {
 		if (!this.options) return;
-		this.filteredNotes = filterIndexNotes(this.notes, this.selection, this.query);
+		this.filteredNotes = filterIndexNotes(this.notes, this.selection);
 		this.resultCountEl.setText(`${this.filteredNotes.length} 条笔记`);
 		const selected = this.filteredNotes.find((note) =>
 			note.entry.file.path === this.selectedPath,
@@ -329,7 +297,7 @@ export class IndexView extends BasesView {
 			}
 			this.selection = selection;
 			this.renderNavigation();
-			this.applyFilter();
+			this.applySelection();
 		};
 		selfEl.addEventListener('click', activate);
 		selfEl.addEventListener('keydown', (event) => {
