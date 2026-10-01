@@ -4618,26 +4618,6 @@ button.mbv-map-color-swatch:focus-visible {
 	min-height: 360px;
 }
 
-.mbv-index-toolbar {
-	display: flex;
-	min-height: 48px;
-	box-sizing: border-box;
-	padding: 7px 12px;
-	border-bottom: 1px solid var(--background-modifier-border);
-	background: var(--background-primary);
-	align-items: center;
-	justify-content: flex-end;
-	gap: 12px;
-}
-
-.mbv-index-result-count {
-	flex: 0 0 auto;
-	color: var(--text-muted);
-	font-size: var(--font-ui-smaller);
-	font-variant-numeric: tabular-nums;
-	white-space: nowrap;
-}
-
 .mbv-index-body {
 	display: grid;
 	min-width: 0;
@@ -4877,11 +4857,6 @@ button.mbv-index-row-action.is-danger:focus-visible {
 }
 
 @container mbv-index (max-width: 720px) {
-	.mbv-index-toolbar {
-		padding-right: 8px;
-		padding-left: 8px;
-	}
-
 	.mbv-index-body {
 		display: flex;
 		flex-direction: column;

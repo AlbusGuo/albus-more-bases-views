@@ -34,7 +34,6 @@ export class IndexView extends BasesView {
 
 	private readonly containerEl: HTMLElement;
 	private readonly navEl: HTMLElement;
-	private readonly resultCountEl: HTMLElement;
 	private readonly list: IndexVirtualList;
 	private readonly noteActions: IndexNoteActions;
 	private readonly categoryDrag: IndexCategoryDragController;
@@ -68,8 +67,6 @@ export class IndexView extends BasesView {
 		});
 		this.containerEl.classList.toggle('is-embedded', embedded);
 		this.noteActions = new IndexNoteActions(this.app);
-		const toolbarEl = this.containerEl.createDiv('mbv-index-toolbar');
-		this.resultCountEl = toolbarEl.createDiv('mbv-index-result-count');
 		const bodyEl = this.containerEl.createDiv('mbv-index-body');
 		this.navEl = bodyEl.createEl('nav', {
 			cls: 'mbv-index-nav nav-files-container',
@@ -124,7 +121,6 @@ export class IndexView extends BasesView {
 	private applySelection(): void {
 		if (!this.options) return;
 		this.filteredNotes = filterIndexNotes(this.notes, this.selection);
-		this.resultCountEl.setText(`${this.filteredNotes.length} 条笔记`);
 		const selected = this.filteredNotes.find((note) =>
 			note.entry.file.path === this.selectedPath,
 		) ?? null;
