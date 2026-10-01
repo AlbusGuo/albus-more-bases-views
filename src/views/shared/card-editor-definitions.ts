@@ -6,6 +6,12 @@ import type { GameViewOptions } from '../game/game-options';
 import type { MediaViewOptions } from '../media/media-options';
 import type { PaperViewOptions } from '../paper/paper-options';
 import type { ProjectViewOptions } from '../project/project-options';
+import {
+	getProjectDevelopmentStatus,
+	getProjectPublicStatus,
+	PROJECT_DEVELOPMENT_STATUSES,
+	PROJECT_PUBLIC_STATUSES,
+} from '../project/project-status';
 import type {
 	CardPropertyEditorDefinition,
 	CardPropertyEditorField,
@@ -39,8 +45,16 @@ export const PROJECT_CARD_EDITOR: CardPropertyEditorDefinition<ProjectViewOption
 		propertyField('title', '项目名称', 'text', (options) => options.titleProperty, true),
 		propertyField('author', '作者', 'list', (options) => options.authorProperty),
 		propertyField('repoPath', '项目地址', 'text', (options) => options.repoPathProperty),
-		propertyField('publicStatus', '公开状态', 'boolean', (options) => options.statusProperty),
-		propertyField('developmentStatus', '开发状态', 'boolean', (options) => options.developmentStatusProperty),
+		{
+			...propertyField('publicStatus', '公开状态', 'select', (options) => options.statusProperty),
+			options: PROJECT_PUBLIC_STATUSES,
+			normalize: getProjectPublicStatus,
+		},
+		{
+			...propertyField('developmentStatus', '开发状态', 'select', (options) => options.developmentStatusProperty),
+			options: PROJECT_DEVELOPMENT_STATUSES,
+			normalize: getProjectDevelopmentStatus,
+		},
 	],
 };
 

@@ -1,18 +1,14 @@
 import {
 	Keymap,
-	Notice,
 	setIcon,
 	type App,
 	type BasesEntry,
 	type BasesPropertyId,
 } from 'obsidian';
-import { getStatus, updateStatus } from '../../services/entry-actions';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import {
 	getBadgeUrl,
-	getDevelopmentBadgeUrl,
 	getGithubUrl,
-	getPublicBadgeUrl,
 	normalizeRepositoryPath,
 } from './project-badges';
 import {
@@ -26,6 +22,16 @@ import {
 	updateProjectDetails,
 } from './project-properties';
 import { ProjectTaskPanel } from './project-task-panel';
+import {
+	getProjectPublicStatus,
+	shouldLoadProjectBadges,
+} from './project-status';
+import {
+	createDevelopmentSelector,
+	createPublicSelector,
+	updateDevelopmentSelector,
+	updatePublicSelector,
+} from './project-status-actions';
 
 export interface ProjectCardContext {
 	app: App;
@@ -81,7 +87,7 @@ export function createProjectCard(
 	const developmentValueEl = developmentRowEl.createSpan(
 		'mbv-project-terminal-value',
 	);
-	const developmentButton = createDevelopmentToggle(
+	const developmentButton = createDevelopmentSelector(
 		developmentValueEl,
 		state,
 	);
@@ -93,7 +99,7 @@ export function createProjectCard(
 		text: 'Public',
 	});
 	const publicValueEl = publicRowEl.createSpan('mbv-project-terminal-value');
-	const publicButton = createPublicToggle(publicValueEl, state);
+	const publicButton = createPublicSelector(publicValueEl, state);
 	const rows = new Map<ProjectMetricKey, ProjectMetricElements>();
 	for (const metric of PROJECT_METRICS) {
 		const rowEl = tableEl.createDiv('mbv-project-terminal-row');
@@ -117,13 +123,14 @@ export function createProjectCard(
 		const repositoryPath = normalizeRepositoryPath(
 			getPropertyText(context.entry, context.options.repoPathProperty),
 		);
+		const publicStatus = getProjectPublicStatus(
+			context.options.statusProperty
+				? context.entry.getValue(context.options.statusProperty)
+				: null,
+		);
 		const isPublic = Boolean(repositoryPath) &&
 			Boolean(context.options.statusProperty) &&
-			getStatus(
-				context.options.statusProperty
-					? context.entry.getValue(context.options.statusProperty)
-					: null,
-			);
+			shouldLoadProjectBadges(publicStatus);
 		const authors = formatAuthors(
 			getPropertyText(context.entry, context.options.authorProperty),
 		);
@@ -159,12 +166,12 @@ export function createProjectCard(
 				updateBadge(elements.valueEl, repositoryPath, metric.key, isPublic);
 			}
 		}
-		updateDevelopmentToggle(
+		updateDevelopmentSelector(
 			developmentButton,
 			developmentRowEl,
 			context,
 		);
-		updatePublicToggle(publicButton, publicRowEl, context);
+		updatePublicSelector(publicButton, publicRowEl, context);
 
 		const signature = getProjectDetailsSignature(context);
 		if (signature !== state.detailsSignature) {
@@ -181,139 +188,6 @@ export function createProjectCard(
 		prepareHtmlExport: () => taskPanel.prepareHtmlExport(),
 		destroy: () => taskPanel.destroy(),
 	};
-}
-
-function createDevelopmentToggle(
-	parentEl: HTMLElement,
-	state: { context: ProjectCardContext },
-): HTMLButtonElement {
-	const button = parentEl.createEl('button', {
-		cls: 'mbv-project-status-toggle mbv-project-development-toggle',
-		attr: {
-			type: 'button',
-			'aria-pressed': 'false',
-		},
-	});
-	button.createEl('img', {
-		cls: 'mbv-project-status-badge mbv-project-development-badge',
-		attr: { alt: '', decoding: 'async' },
-	});
-	button.addEventListener('keydown', (event) => event.stopPropagation());
-	button.addEventListener('click', (event) => {
-		event.preventDefault();
-		event.stopPropagation();
-		const { app, entry, options } = state.context;
-		const property = options.developmentStatusProperty;
-		if (!property || button.disabled) return;
-		const previous = button.dataset.complete === 'true';
-		const next = !previous;
-		applyDevelopmentState(button, next);
-		button.disabled = true;
-		void updateStatus(app, entry, property, next)
-			.catch(() => {
-				applyDevelopmentState(button, previous);
-				new Notice('更新开发状态失败.');
-			})
-			.finally(() => { button.disabled = false; });
-	});
-	return button;
-}
-
-function createPublicToggle(
-	parentEl: HTMLElement,
-	state: { context: ProjectCardContext },
-): HTMLButtonElement {
-	const button = parentEl.createEl('button', {
-		cls: 'mbv-project-status-toggle mbv-project-public-toggle',
-		attr: { type: 'button', 'aria-pressed': 'false' },
-	});
-	button.createEl('img', {
-		cls: 'mbv-project-status-badge mbv-project-public-badge',
-		attr: { alt: '', decoding: 'async' },
-	});
-	button.addEventListener('keydown', (event) => event.stopPropagation());
-	button.addEventListener('click', (event) => {
-		event.preventDefault();
-		event.stopPropagation();
-		const { app, entry, options } = state.context;
-		const property = options.statusProperty;
-		if (!property || button.disabled) return;
-		const previous = button.dataset.enabled === 'true';
-		const next = !previous;
-		applyPublicState(button, next);
-		button.disabled = true;
-		void updateStatus(app, entry, property, next)
-			.catch(() => {
-				applyPublicState(button, previous);
-				new Notice('更新公开状态失败.');
-			})
-			.finally(() => { button.disabled = false; });
-	});
-	return button;
-}
-
-function updatePublicToggle(
-	button: HTMLButtonElement,
-	rowEl: HTMLElement,
-	context: ProjectCardContext,
-): void {
-	const property = context.options.statusProperty;
-	rowEl.classList.toggle('is-hidden', !property);
-	if (!property) {
-		button.disabled = false;
-		button.removeAttribute('data-enabled');
-		return;
-	}
-	if (button.disabled) return;
-	applyPublicState(button, getStatus(context.entry.getValue(property)));
-}
-
-function applyPublicState(button: HTMLButtonElement, isPublic: boolean): void {
-	button.dataset.enabled = String(isPublic);
-	button.setAttribute('aria-pressed', String(isPublic));
-	button.setAttribute(
-		'aria-label',
-		isPublic ? '公开状态: 公开, 点击改为私有' : '公开状态: 私有, 点击改为公开',
-	);
-	const badge = button.querySelector<HTMLImageElement>(
-		'.mbv-project-public-badge',
-	);
-	if (badge) badge.src = getPublicBadgeUrl(isPublic);
-}
-
-function updateDevelopmentToggle(
-	button: HTMLButtonElement,
-	rowEl: HTMLElement,
-	context: ProjectCardContext,
-): void {
-	const property = context.options.developmentStatusProperty;
-	rowEl.classList.toggle('is-hidden', !property);
-	if (!property) {
-		button.disabled = false;
-		button.removeAttribute('data-complete');
-		return;
-	}
-	if (button.disabled) return;
-	applyDevelopmentState(
-		button,
-		getStatus(context.entry.getValue(property)),
-	);
-}
-
-function applyDevelopmentState(
-	button: HTMLButtonElement,
-	complete: boolean,
-): void {
-	button.dataset.complete = String(complete);
-	button.setAttribute('aria-pressed', String(complete));
-	button.setAttribute(
-		'aria-label',
-		complete ? '开发状态: 阶段完成, 点击改为开发中' : '开发状态: 开发中, 点击标记阶段完成',
-	);
-	const badge = button.querySelector<HTMLImageElement>(
-		'.mbv-project-development-badge',
-	);
-	if (badge) badge.src = getDevelopmentBadgeUrl(complete);
 }
 
 interface ProjectMetricElements {

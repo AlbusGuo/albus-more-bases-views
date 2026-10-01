@@ -40,6 +40,7 @@ export function resolveCardPropertyKind<Options>(
 	value: unknown,
 	propertyType: ReturnType<typeof getEditablePropertyType>,
 ): CardPropertyFieldKind {
+	if (field.kind === 'select') return 'select';
 	if (propertyType === 'list') return 'list';
 	if (propertyType === 'boolean') return 'boolean';
 	if (propertyType === 'number') return 'number';
@@ -85,6 +86,7 @@ export function fieldDescription<Options>(
 	if (kind === 'datetime') return '日期时间';
 	if (kind === 'boolean') return '开关';
 	if (kind === 'reading-status') return '已阅 / 阅读中 / 未读';
+	if (kind === 'select') return field.options?.join(' / ') ?? '选项';
 	return '文本';
 }
 

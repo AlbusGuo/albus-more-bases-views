@@ -13,7 +13,8 @@ export type CardPropertyFieldKind =
 	| 'pdf'
 	| 'list'
 	| 'boolean'
-	| 'reading-status';
+	| 'reading-status'
+	| 'select';
 
 export interface CardPropertyEditorField<Options> {
 	id: string;
@@ -21,6 +22,8 @@ export interface CardPropertyEditorField<Options> {
 	description?: string;
 	placeholder?: string;
 	kind?: CardPropertyFieldKind;
+	options?: readonly string[];
+	normalize?: (value: unknown) => string;
 	property: (options: Options) => BasesPropertyId | null;
 	filenameFallback?: boolean;
 }

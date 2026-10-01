@@ -1,4 +1,8 @@
 import type { ProjectMetricKey } from './project-options';
+import type {
+	ProjectDevelopmentStatus,
+	ProjectPublicStatus,
+} from './project-status';
 
 export function normalizeRepositoryPath(value: string): string {
 	const normalized = value
@@ -16,21 +20,30 @@ export function getGithubUrl(repositoryPath: string): string {
 	return `https://github.com/${repositoryPath}`;
 }
 
-export function getDevelopmentBadgeUrl(complete: boolean): string {
+export function getDevelopmentBadgeUrl(
+	status: ProjectDevelopmentStatus,
+): string {
+	const complete = status === '阶段完成';
 	return getLocalBadgeUrl(
 		'Status',
-		complete ? '阶段完成' : '开发中',
+		status,
 		complete ? '#4c1' : '#fe7d37',
 		42,
 		complete ? 58 : 47,
 	);
 }
 
-export function getPublicBadgeUrl(isPublic: boolean): string {
+export function getPublicBadgeUrl(status: ProjectPublicStatus): string {
+	const colors: Record<ProjectPublicStatus, string> = {
+		私有: '#e05d44',
+		公开: '#4c1',
+		上架: '#007ec6',
+		付费: '#dfb317',
+	};
 	return getLocalBadgeUrl(
 		'Public',
-		isPublic ? '公开' : '私有',
-		isPublic ? '#4c1' : '#e05d44',
+		status,
+		colors[status],
 		40,
 		35,
 	);

@@ -169,7 +169,12 @@ export class CardPropertyModal<Options>
 				getEditablePropertyType(this.app, propertyId, raw),
 			);
 			this.resolvedKinds.set(field.id, kind);
-			this.draft.set(field.id, createDraftValue(kind, raw));
+			this.draft.set(
+				field.id,
+				kind === 'select' && field.normalize
+					? field.normalize(raw)
+					: createDraftValue(kind, raw),
+			);
 		}
 	}
 
@@ -239,6 +244,15 @@ export class CardPropertyModal<Options>
 					.addOption('未读', '未读')
 					.setValue(readReadingStatus(this.draft.get(field.id)))
 					.onChange((value) => this.change(field, value, true)));
+			} else if (kind === 'select') {
+				setting.addDropdown((dropdown) => {
+					for (const option of field.options ?? []) {
+						dropdown.addOption(option, option);
+					}
+					dropdown
+						.setValue(String(this.draft.get(field.id) ?? ''))
+						.onChange((value) => this.change(field, value, true));
+				});
 			} else {
 				setting.addText((input) => {
 					if (kind === 'number') {
@@ -312,6 +326,7 @@ export class CardPropertyModal<Options>
 			return number;
 		}
 		if (kind === 'reading-status') return readReadingStatus(text);
+		if (kind === 'select') return field.normalize?.(text) ?? text;
 		return text;
 	}
 

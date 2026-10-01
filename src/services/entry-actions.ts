@@ -20,21 +20,6 @@ interface NativeAppWithSystemOpen extends App {
 
 const TRUE_STATUS_VALUES = new Set(['true', 'yes', 'x', '- [x]', 'done']);
 
-export function getStatus(value: Value | null): boolean {
-	if (value === null) return false;
-	const normalized = value.toString().trim().toLowerCase();
-	return normalized !== '' && isTruthyStatus(normalized);
-}
-
-export async function updateStatus(
-	app: App,
-	entry: BasesEntry,
-	property: BasesPropertyId,
-	checked: boolean,
-): Promise<void> {
-	await updateNoteProperty(app, entry, property, checked);
-}
-
 export function getReadingStatus(value: Value | null): ReadingStatus {
 	if (value === null || value instanceof NullValue) return '未读';
 	const normalized = value.toString().trim().toLowerCase();
@@ -49,6 +34,15 @@ export async function updateReadingStatus(
 	entry: BasesEntry,
 	property: BasesPropertyId,
 	status: ReadingStatus,
+): Promise<void> {
+	await updateNoteProperty(app, entry, property, status);
+}
+
+export async function updateTextStatus(
+	app: App,
+	entry: BasesEntry,
+	property: BasesPropertyId,
+	status: string,
 ): Promise<void> {
 	await updateNoteProperty(app, entry, property, status);
 }

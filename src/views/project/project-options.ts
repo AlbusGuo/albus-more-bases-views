@@ -57,14 +57,14 @@ export function getProjectViewOptions(): BasesAllOptions[] {
 				propertyOption('authorProperty', '作者属性', '选择作者属性'),
 				propertyOption('repoPathProperty', '项目地址属性', '例如 owner/repository'),
 				{
-					...propertyOption('statusProperty', '公开状态属性', '公开项目为开启状态'),
+					...propertyOption('statusProperty', '公开状态属性', '私有 / 公开 / 上架 / 付费'),
 					filter: (property: BasesPropertyId) => property.startsWith('note.'),
 				},
 				{
 					...propertyOption(
 						'developmentStatusProperty',
 						'开发状态属性',
-						'阶段完成为开启状态',
+						'阶段完成 / 开发中',
 					),
 					filter: (property: BasesPropertyId) => property.startsWith('note.'),
 				},
