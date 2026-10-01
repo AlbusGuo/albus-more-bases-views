@@ -2,7 +2,7 @@ export const PROJECT_DEVELOPMENT_STATUSES = ['阶段完成', '开发中'] as con
 export type ProjectDevelopmentStatus =
 	typeof PROJECT_DEVELOPMENT_STATUSES[number];
 
-export const PROJECT_PUBLIC_STATUSES = ['私有', '公开', '上架', '付费'] as const;
+export const PROJECT_PUBLIC_STATUSES = ['私有', '公开', '上架'] as const;
 export type ProjectPublicStatus = typeof PROJECT_PUBLIC_STATUSES[number];
 
 export function getProjectDevelopmentStatus(
@@ -17,7 +17,7 @@ export function getProjectPublicStatus(
 	value: unknown,
 ): ProjectPublicStatus {
 	const text = statusText(value);
-	if (text === '私有' || text === '公开' || text === '上架' || text === '付费') {
+	if (text === '私有' || text === '公开' || text === '上架') {
 		return text;
 	}
 	return getLegacyStatus(value) ? '公开' : '私有';

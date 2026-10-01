@@ -38,7 +38,6 @@ export function getPublicBadgeUrl(status: ProjectPublicStatus): string {
 		私有: '#e05d44',
 		公开: '#4c1',
 		上架: '#007ec6',
-		付费: '#dfb317',
 	};
 	return getLocalBadgeUrl(
 		'Public',

@@ -64,7 +64,6 @@ export function createPublicSelector(
 			私有: 'lock',
 			公开: 'globe-2',
 			上架: 'package-check',
-			付费: 'badge-dollar-sign',
 		},
 		property: (context) => context.options.statusProperty,
 		read: getProjectPublicStatus,
