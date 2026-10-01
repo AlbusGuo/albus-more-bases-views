@@ -81,7 +81,7 @@ export default class MoreBasesViewsPlugin extends Plugin {
 		this.register(() => navigation.destroy());
 		const operatorAssets = new OperatorAssetService();
 		this.register(() => operatorAssets.destroy());
-		const viewTabs = new BasesViewTabsService(this.app);
+		const viewTabs = new BasesViewTabsService(this.app, this.manifest.id);
 		viewTabs.start();
 		this.register(() => viewTabs.destroy());
 		const tablePropertyManager = new TablePropertyManagerService(this.app);

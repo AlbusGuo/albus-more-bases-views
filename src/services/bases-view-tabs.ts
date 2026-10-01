@@ -1,19 +1,25 @@
 import {
 	Notice,
 	setIcon,
+	setTooltip,
 	type App,
 	type EventRef,
 	type QueryController,
 } from 'obsidian';
+import { BasesViewIconService } from './bases-view-icon-service';
 
 interface InternalViewConfig {
 	name: string;
 	type: string;
+	data?: Record<string, unknown>;
+	get?: (key: string) => unknown;
+	set?: (key: string, value: unknown) => void;
 }
 
 interface InternalBasesQuery {
 	views: InternalViewConfig[];
 	save?: () => void | Promise<void>;
+	getViewConfig?: (name: string) => InternalViewConfig | null;
 }
 
 interface InternalViewRegistration {
@@ -31,6 +37,9 @@ interface InternalQueryController extends QueryController {
 	plugin?: InternalBasesPlugin;
 	selectView?: (name: string) => void;
 	promptForAddView?: () => void;
+	viewMenu?: {
+		toolbarItem?: { scrollEl?: HTMLElement };
+	};
 }
 
 interface InternalBasesFileView {
@@ -62,7 +71,17 @@ export class BasesViewTabsService {
 	private scanFrame: number | null = null;
 	private started = false;
 	private destroyed = false;
-	constructor(private readonly app: App) {}
+	private readonly iconService: BasesViewIconService;
+	constructor(
+		private readonly app: App,
+		consumerId: string,
+	) {
+		this.iconService = new BasesViewIconService(
+			app,
+			consumerId,
+			() => this.refreshViewIcons(),
+		);
+	}
 
 	start(): void {
 		if (this.started || this.destroyed) return;
@@ -87,6 +106,7 @@ export class BasesViewTabsService {
 			);
 		if (!headerEl) return;
 		this.ensureInstance(headerEl, internalController);
+		this.syncRequiredIcons();
 	}
 
 	destroy(): void {
@@ -101,6 +121,7 @@ export class BasesViewTabsService {
 		this.eventRefs.length = 0;
 		for (const instance of this.instances.values()) instance.destroy();
 		this.instances.clear();
+		this.iconService.destroy();
 	}
 
 	private scheduleScan(): void {
@@ -123,6 +144,7 @@ export class BasesViewTabsService {
 			instance.destroy();
 			this.instances.delete(headerEl);
 		}
+		this.syncRequiredIcons();
 	}
 
 	private ensureInstance(
@@ -134,8 +156,34 @@ export class BasesViewTabsService {
 			current.setController(controller);
 			return;
 		}
-		const instance = BasesTabsInstance.create(headerEl, controller);
+		const instance = BasesTabsInstance.create(
+			headerEl,
+			controller,
+			this.iconService,
+			() => this.handleViewIconChanged(),
+		);
 		if (instance) this.instances.set(headerEl, instance);
+	}
+
+	private handleViewIconChanged(): void {
+		this.refreshViewIcons();
+		this.syncRequiredIcons();
+	}
+
+	private refreshViewIcons(): void {
+		for (const instance of this.instances.values()) instance.refreshIcons();
+	}
+
+	private syncRequiredIcons(): void {
+		const iconIds = [...new Set(
+			[...this.instances.values()].flatMap((instance) =>
+				instance.getConfiguredIconIds()),
+		)];
+		void this.iconService.sync(iconIds)
+			.then(() => this.refreshViewIcons())
+			.catch((error: unknown) => {
+				console.error('More Bases Views failed to sync Custom Icons:', error);
+			});
 	}
 }
 
@@ -159,6 +207,8 @@ class BasesTabsInstance {
 		private readonly headerEl: HTMLElement,
 		private readonly nativeViewsMenuEl: HTMLElement,
 		private controller: InternalQueryController,
+		private readonly iconService: BasesViewIconService,
+		private readonly onViewIconChanged: () => void,
 	) {
 		this.nativeViewsButtonEl =
 			nativeViewsMenuEl.querySelector<HTMLElement>('.text-icon-button') ??
@@ -183,39 +233,45 @@ class BasesTabsInstance {
 		this.headerEl.addClass('mbv-bases-tabs-enabled');
 
 		this.observer = new MutationObserver(() => this.scheduleRefresh());
-		this.observer.observe(this.nativeViewsMenuEl, {
-			attributes: true,
-			characterData: true,
-			childList: true,
-			subtree: true,
-		});
+		this.observeControllerMenu();
 		this.refresh();
 	}
 
 	static create(
 		headerEl: HTMLElement,
 		controller: InternalQueryController,
+		iconService: BasesViewIconService,
+		onViewIconChanged: () => void,
 	): BasesTabsInstance | null {
 		const nativeViewsMenuEl =
 			headerEl.querySelector<HTMLElement>('.bases-toolbar-views-menu');
 		if (!nativeViewsMenuEl || !isSupportedController(controller)) return null;
-		return new BasesTabsInstance(headerEl, nativeViewsMenuEl, controller);
+		return new BasesTabsInstance(
+			headerEl,
+			nativeViewsMenuEl,
+			controller,
+			iconService,
+			onViewIconChanged,
+		);
 	}
 
 	setController(controller: InternalQueryController): void {
 		if (!isSupportedController(controller)) return;
 		this.controller = controller;
+		this.observeControllerMenu();
 		this.refresh();
 	}
 
 	refresh(): void {
 		if (this.destroyed) return;
+		this.syncViewIconEditor();
 		const views = getViews(this.controller);
 		if (views.length === 0) return;
 		const activeViewName = this.controller.viewName ?? views[0]?.name ?? '';
 		const signature = JSON.stringify([
 			activeViewName,
-			...views.map((view) => `${view.type}\u0000${view.name}`),
+			...views.map((view) =>
+				`${view.type}\u0000${view.name}\u0000${getConfiguredViewIcon(view)}`),
 		]);
 		if (signature === this.renderSignature) return;
 		this.renderSignature = signature;
@@ -230,7 +286,11 @@ class BasesTabsInstance {
 				},
 			});
 			const iconEl = tabEl.createSpan('mbv-bases-view-tab-icon');
-			setIcon(iconEl, getViewIcon(this.controller, view.type));
+			this.iconService.render(
+				iconEl,
+				getConfiguredViewIcon(view),
+				getDefaultViewIcon(this.controller, view.type),
+			);
 			tabEl.createSpan({ cls: 'mbv-bases-view-tab-name', text: view.name });
 			tabEl.classList.toggle('is-active', view.name === activeViewName);
 			tabEl.dataset.viewName = view.name;
@@ -246,6 +306,104 @@ class BasesTabsInstance {
 		}
 	}
 
+	refreshIcons(): void {
+		this.renderSignature = '';
+		const root = this.controller.viewMenu?.toolbarItem?.scrollEl ??
+			this.nativeViewsMenuEl;
+		root.querySelectorAll<HTMLElement>('.mbv-bases-view-icon-picker')
+			.forEach((element) => delete element.dataset.iconSignature);
+		this.refresh();
+	}
+
+	getConfiguredIconIds(): string[] {
+		return getViews(this.controller)
+			.map((view) => getConfiguredViewIcon(view))
+			.filter(Boolean);
+	}
+
+	private observeControllerMenu(): void {
+		this.observer.disconnect();
+		this.observer.observe(this.nativeViewsMenuEl, {
+			attributes: true,
+			characterData: true,
+			childList: true,
+			subtree: true,
+		});
+		const scrollEl = this.controller.viewMenu?.toolbarItem?.scrollEl;
+		if (scrollEl && scrollEl !== this.nativeViewsMenuEl) {
+			this.observer.observe(scrollEl, {
+				childList: true,
+				subtree: true,
+			});
+		}
+	}
+
+	private syncViewIconEditor(): void {
+		const root = this.controller.viewMenu?.toolbarItem?.scrollEl ??
+			this.nativeViewsMenuEl;
+		const formEl = root.querySelector<HTMLElement>(
+			'.bases-toolbar-menu-form.view-config-menu',
+		);
+		const rowEl = formEl?.querySelector<HTMLElement>(
+			':scope > .input-row:first-child',
+		);
+		const contentEl = rowEl?.querySelector<HTMLElement>(
+			':scope > .input-row-content',
+		);
+		const inputEl = contentEl?.querySelector<HTMLInputElement>('input[type="text"]');
+		if (!rowEl || !contentEl || !inputEl) return;
+		const view = getViews(this.controller).find((candidate) =>
+			candidate.name === inputEl.value,
+		);
+		if (!view) return;
+		rowEl.addClass('mbv-bases-view-name-row');
+		let buttonEl = rowEl.querySelector<HTMLButtonElement>(
+			':scope > .mbv-bases-view-icon-picker',
+		);
+		if (!buttonEl) {
+			buttonEl = rowEl.createEl('button', {
+				cls: 'clickable-icon mbv-bases-view-icon-picker',
+				attr: { type: 'button', 'aria-label': '更换视图图标' },
+			});
+			rowEl.insertBefore(buttonEl, contentEl);
+			setTooltip(buttonEl, '更换视图图标; 右键恢复默认');
+			buttonEl.addEventListener('click', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				void this.iconService.pick(
+					buttonEl as HTMLButtonElement,
+					getConfiguredViewIcon(view),
+					(iconName) => this.updateViewIcon(view, iconName),
+				);
+			});
+			buttonEl.addEventListener('contextmenu', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				this.updateViewIcon(view, '');
+			});
+		}
+		const iconName = getConfiguredViewIcon(view);
+		const fallbackIcon = getDefaultViewIcon(this.controller, view.type);
+		const iconSignature = `${iconName}\0${fallbackIcon}`;
+		if (buttonEl.dataset.iconSignature !== iconSignature) {
+			this.iconService.render(buttonEl, iconName, fallbackIcon);
+			buttonEl.dataset.iconSignature = iconSignature;
+		}
+	}
+
+	private updateViewIcon(view: InternalViewConfig, iconName: string): void {
+		if (typeof view.set === 'function') view.set('icon', iconName || null);
+		else {
+			view.data ??= {};
+			if (iconName) view.data.icon = iconName;
+			else delete view.data.icon;
+			void this.controller.query?.save?.();
+		}
+		this.renderSignature = '';
+		this.refresh();
+		this.onViewIconChanged();
+	}
+
 	destroy(): void {
 		if (this.destroyed) return;
 		this.destroyed = true;
@@ -254,6 +412,12 @@ class BasesTabsInstance {
 			this.refreshFrame = null;
 		}
 		this.observer.disconnect();
+		const root = this.controller.viewMenu?.toolbarItem?.scrollEl ??
+			this.nativeViewsMenuEl;
+		root.querySelectorAll('.mbv-bases-view-icon-picker').forEach((element) =>
+			element.remove());
+		root.querySelectorAll('.mbv-bases-view-name-row').forEach((element) =>
+			element.removeClass('mbv-bases-view-name-row'));
 		this.cancelPointerDrag(false);
 		if (this.settleTimer !== null) {
 			this.headerEl.win.clearTimeout(this.settleTimer);
@@ -622,7 +786,12 @@ function getViews(controller: InternalQueryController): InternalViewConfig[] {
 	);
 }
 
-function getViewIcon(
+function getConfiguredViewIcon(view: InternalViewConfig): string {
+	const configured = view.get?.('icon') ?? view.data?.icon;
+	return typeof configured === 'string' ? configured.trim() : '';
+}
+
+function getDefaultViewIcon(
 	controller: InternalQueryController,
 	viewType: string,
 ): string {

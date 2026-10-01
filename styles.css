@@ -392,6 +392,34 @@
 	min-height: var(--input-height);
 }
 
+.bases-toolbar-menu-form.view-config-menu .mbv-bases-view-name-row {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	gap: var(--size-2-2);
+}
+
+.bases-toolbar-menu-form.view-config-menu .mbv-bases-view-name-row > .input-row-content {
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.mbv-bases-view-icon-picker.clickable-icon {
+	width: var(--input-height);
+	height: var(--input-height);
+	min-width: var(--input-height);
+	min-height: var(--input-height);
+	box-sizing: border-box;
+	padding: var(--size-2-2);
+	flex: 0 0 var(--input-height);
+}
+
+.mbv-bases-view-icon-picker.clickable-icon svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+	stroke-width: var(--icon-s-stroke-width);
+}
+
 .bases-header.mbv-bases-tabs-enabled .bases-toolbar-result-count {
 	min-width: 0;
 	flex: 0 1 auto;
