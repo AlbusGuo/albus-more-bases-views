@@ -70,7 +70,7 @@ export function getMapViewOptions(): BasesAllOptions[] {
 				propertyOption('coordinatesProperty', '坐标属性', '选择坐标属性'),
 				propertyOption('titleProperty', '标题属性', '留空时使用文件名'),
 				propertyOption('markerColorProperty', '标记颜色属性', '选择颜色属性'),
-				propertyOption('markerIconProperty', '标记图标属性', '选择 Lucide 图标属性'),
+				propertyOption('markerIconProperty', '标记图标属性', '选择图标属性'),
 				propertyOption('imageProperty', '标记封面属性', '选择弹出卡片封面属性'),
 			],
 		},

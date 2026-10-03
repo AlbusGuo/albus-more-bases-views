@@ -4,9 +4,7 @@
  */
 import {
 	BasesView,
-	Menu,
 	Notice,
-	parsePropertyId,
 	type BasesPropertyId,
 	type QueryController,
 } from 'obsidian';
@@ -14,6 +12,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { BasesViewTabsService } from '../../services/bases-view-tabs';
 import { attachBasesSearchProperties } from '../../services/bases-search-properties';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
+import type { IconService } from '../../services/icon-service';
 import { AnimationFrameTask } from '../../ui/animation-frame-task';
 import { createMapControls } from './map-controls';
 import {
@@ -76,6 +75,7 @@ export class MapView extends BasesView {
 		private readonly parentEl: HTMLElement,
 		private readonly navigation: MarkdownNavigationService,
 		viewTabs: BasesViewTabsService,
+		private readonly mapIcons: IconService,
 	) {
 		super(controller);
 		this.register(attachBasesSearchProperties(
@@ -227,14 +227,11 @@ export class MapView extends BasesView {
 			this.map,
 			this.mapEl,
 			this.navigation,
+			this.mapIcons,
 		);
 		if (this.suppressMarkerFit) this.markerManager.suppressInitialFit();
 		createMapControls(this.map.getContainer(), this.map, () => this.resetMap());
-		this.register(bindMapPitchDrag(
-			this.mapEl,
-			this.map,
-			(event) => this.showMapContextMenu(event),
-		));
+		this.register(bindMapPitchDrag(this.mapEl, this.map));
 		this.map.on('load', () => {
 			if (!this.map) return;
 			this.mapLoaded = true;
@@ -298,71 +295,6 @@ export class MapView extends BasesView {
 			pitch: 0,
 			bearing: 0,
 		});
-	}
-
-	private showMapContextMenu(event: MouseEvent): void {
-		if (!this.map || !this.runtimeConfig) return;
-		const rect = this.mapEl.getBoundingClientRect();
-		const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
-		const lngLat = this.map.unproject(point);
-		const coordinates: MapCoordinates = [
-			Math.round(lngLat.lat * 100000) / 100000,
-			Math.round(lngLat.lng * 100000) / 100000,
-		];
-		const menu = Menu.forEvent(event);
-		menu.addItem((item) => item
-			.setTitle('新建坐标笔记')
-			.setIcon('square-pen')
-			.onClick(() => this.createCoordinateFile(coordinates)));
-		menu.addItem((item) => item
-			.setTitle('复制坐标')
-			.setIcon('copy')
-			.onClick(() => this.copyCoordinates(coordinates)));
-		menu.addItem((item) => item
-			.setTitle('设为默认中心')
-			.setIcon('map-pin')
-			.onClick(() => this.setDefaultCenter(coordinates)));
-		menu.addItem((item) => item
-			.setTitle(`设为默认缩放 (${this.map?.getZoom().toFixed(1) ?? ''})`)
-			.setIcon('crosshair')
-			.onClick(() => this.setDefaultZoom()));
-	}
-
-	private createCoordinateFile(coordinates: MapCoordinates): void {
-		const property = this.runtimeConfig?.options.coordinatesProperty;
-		void this.createFileForView('', (frontmatter) => {
-			if (!property) return;
-			const parsed = parsePropertyId(property);
-			if (parsed.type !== 'note') return;
-			const writable = frontmatter as Record<string, unknown>;
-			writable[parsed.name] = coordinates.map((value) => value.toFixed(5));
-		});
-	}
-
-	private copyCoordinates(coordinates: MapCoordinates): void {
-		const clipboard = this.mapEl.ownerDocument.defaultView?.navigator.clipboard;
-		if (!clipboard) {
-			new Notice('当前环境无法访问剪贴板.');
-			return;
-		}
-		void clipboard.writeText(formatCoordinates(coordinates)).then(
-			() => new Notice('坐标已复制.'),
-			() => new Notice('复制坐标失败.'),
-		);
-	}
-
-	private setDefaultCenter(coordinates: MapCoordinates): void {
-		this.config.set('centerLatitude', String(coordinates[0]));
-		this.config.set('centerLongitude', String(coordinates[1]));
-		if (this.runtimeConfig) this.runtimeConfig.center = coordinates;
-		this.map?.setCenter([coordinates[1], coordinates[0]]);
-	}
-
-	private setDefaultZoom(): void {
-		if (!this.map) return;
-		const zoom = Math.round(this.map.getZoom() * 10) / 10;
-		this.config.set('defaultZoom', zoom);
-		if (this.runtimeConfig) this.runtimeConfig.options.defaultZoom = zoom;
 	}
 
 	private updateHeight(height: number): void {

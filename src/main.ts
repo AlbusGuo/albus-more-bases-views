@@ -2,6 +2,7 @@ import { Notice, Plugin } from 'obsidian';
 import { BasesViewTabsService } from './services/bases-view-tabs';
 import { CardGalleryHtmlExporter } from './services/card-gallery-html-exporter';
 import { MarkdownNavigationService } from './services/markdown-navigation';
+import { IconService } from './services/icon-service';
 import { TablePropertyManagerService } from './services/table-property-manager';
 import { ViewPackManager } from './services/view-pack-manager';
 import {
@@ -81,7 +82,9 @@ export default class MoreBasesViewsPlugin extends Plugin {
 		this.register(() => navigation.destroy());
 		const operatorAssets = new OperatorAssetService();
 		this.register(() => operatorAssets.destroy());
-		const viewTabs = new BasesViewTabsService(this.app, this.manifest.id);
+		const icons = new IconService(this.app, this.manifest.id);
+		this.register(() => icons.destroy());
+		const viewTabs = new BasesViewTabsService(this.app, icons);
 		viewTabs.start();
 		this.register(() => viewTabs.destroy());
 		const tablePropertyManager = new TablePropertyManagerService(this.app);
@@ -195,7 +198,7 @@ export default class MoreBasesViewsPlugin extends Plugin {
 				name: '地图',
 				icon: 'lucide-map',
 				factory: (controller, containerEl) =>
-					new MapView(controller, containerEl, navigation, viewTabs),
+					new MapView(controller, containerEl, navigation, viewTabs, icons),
 				options: getMapViewOptions,
 			}),
 			this.registerBasesView(CELEBRITY_VIEW_TYPE, {

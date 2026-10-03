@@ -6,7 +6,7 @@ import {
 	type EventRef,
 	type QueryController,
 } from 'obsidian';
-import { BasesViewIconService } from './bases-view-icon-service';
+import type { IconService } from './icon-service';
 
 interface InternalViewConfig {
 	name: string;
@@ -71,16 +71,13 @@ export class BasesViewTabsService {
 	private scanFrame: number | null = null;
 	private started = false;
 	private destroyed = false;
-	private readonly iconService: BasesViewIconService;
+	private readonly releaseIconListener: () => void;
 	constructor(
 		private readonly app: App,
-		consumerId: string,
+		private readonly iconService: IconService,
 	) {
-		this.iconService = new BasesViewIconService(
-			app,
-			consumerId,
-			() => this.refreshViewIcons(),
-		);
+		this.releaseIconListener = this.iconService.onChanged(() =>
+			this.refreshViewIcons());
 	}
 
 	start(): void {
@@ -121,7 +118,8 @@ export class BasesViewTabsService {
 		this.eventRefs.length = 0;
 		for (const instance of this.instances.values()) instance.destroy();
 		this.instances.clear();
-		this.iconService.destroy();
+		this.releaseIconListener();
+		this.iconService.release(this);
 	}
 
 	private scheduleScan(): void {
@@ -179,11 +177,7 @@ export class BasesViewTabsService {
 			[...this.instances.values()].flatMap((instance) =>
 				instance.getConfiguredIconIds()),
 		)];
-		void this.iconService.sync(iconIds)
-			.then(() => this.refreshViewIcons())
-			.catch((error: unknown) => {
-				console.error('More Bases Views failed to sync Custom Icons:', error);
-			});
+		this.iconService.setRequiredIcons(this, iconIds);
 	}
 }
 
@@ -209,7 +203,7 @@ class BasesTabsInstance {
 		private readonly headerEl: HTMLElement,
 		private readonly nativeViewsMenuEl: HTMLElement,
 		private controller: InternalQueryController,
-		private readonly iconService: BasesViewIconService,
+		private readonly iconService: IconService,
 		private readonly onViewIconChanged: () => void,
 	) {
 		this.nativeViewsButtonEl =
@@ -251,7 +245,7 @@ class BasesTabsInstance {
 	static create(
 		headerEl: HTMLElement,
 		controller: InternalQueryController,
-		iconService: BasesViewIconService,
+		iconService: IconService,
 		onViewIconChanged: () => void,
 	): BasesTabsInstance | null {
 		const nativeViewsMenuEl =

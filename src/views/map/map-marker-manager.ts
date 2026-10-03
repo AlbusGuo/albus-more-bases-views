@@ -1,6 +1,7 @@
 import { type App, BasesEntry, BasesPropertyId } from 'obsidian';
 import { LngLatBounds, Marker, type Map as MapLibreMap } from 'maplibre-gl';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
+import type { IconService } from '../../services/icon-service';
 import { parseCoordinates, type MapCoordinates } from './map-coordinates';
 import { createMapMarkerElement } from './map-marker';
 import {
@@ -35,6 +36,8 @@ export class MapMarkerManager {
 	private editorCleanup: (() => void) | null = null;
 	private context: MarkerUpdateContext | null = null;
 	private allowInitialFit = true;
+	private iconRevision = 0;
+	private readonly releaseIconListener: () => void;
 	private readonly handleMapBackgroundClick = (event: MouseEvent): void => {
 		const target = event.target as Element | null;
 		if (target?.closest?.('.mbv-map-marker, .mbv-map-inspector')) return;
@@ -54,10 +57,15 @@ export class MapMarkerManager {
 		private readonly map: MapLibreMap,
 		private readonly mapEl: HTMLElement,
 		private readonly navigation: MarkdownNavigationService,
+		private readonly mapIcons: IconService,
 	) {
 		this.mapEl.addEventListener('click', this.handleMapBackgroundClick);
 		this.map.on('movestart', this.handleMapMoveStart);
 		this.map.on('resize', this.handleMapResize);
+		this.releaseIconListener = this.mapIcons.onChanged(() => {
+			this.iconRevision += 1;
+			if (this.context) this.update(this.context);
+		});
 	}
 
 	suppressInitialFit(): void {
@@ -68,19 +76,23 @@ export class MapMarkerManager {
 		this.context = context;
 		const property = context.options.coordinatesProperty;
 		if (!property) {
+			this.mapIcons.setRequiredIcons(this, []);
 			this.clear();
 			return;
 		}
 		const activeKeys = new Set<string>();
 		const allCoordinates: MapCoordinates[] = [];
+		const requiredIcons: string[] = [];
 		for (const entry of context.entries) {
 			const coordinates = parseCoordinates(entry.getValue(property));
 			if (!coordinates) continue;
 			const key = entry.file.path;
 			activeKeys.add(key);
 			allCoordinates.push(coordinates);
+			requiredIcons.push(getEntryText(entry, context.options.markerIconProperty));
 			this.upsert(key, entry, coordinates);
 		}
+		this.mapIcons.setRequiredIcons(this, requiredIcons);
 		for (const [key, record] of this.markers) {
 			if (activeKeys.has(key)) continue;
 			record.marker.remove();
@@ -110,6 +122,8 @@ export class MapMarkerManager {
 		this.mapEl.removeEventListener('click', this.handleMapBackgroundClick);
 		this.map.off('movestart', this.handleMapMoveStart);
 		this.map.off('resize', this.handleMapResize);
+		this.releaseIconListener();
+		this.mapIcons.release(this);
 		this.clear();
 		this.context = null;
 	}
@@ -130,6 +144,7 @@ export class MapMarkerManager {
 			title,
 			icon,
 			color,
+			this.iconRevision,
 		);
 		const existing = this.markers.get(key);
 		if (existing && existing.presentationSignature === signature) {
@@ -139,7 +154,7 @@ export class MapMarkerManager {
 			return;
 		}
 		existing?.marker.remove();
-		const element = createMapMarkerElement(this.mapEl.ownerDocument, {
+		const element = createMapMarkerElement(this.mapEl.ownerDocument, this.mapIcons, {
 			icon,
 			color,
 			onActivate: () => this.openInspector(key),
@@ -191,6 +206,8 @@ export class MapMarkerManager {
 			visibleProperties: this.context.visibleProperties,
 			getDisplayName: this.context.getDisplayName,
 			navigation: this.navigation,
+			renderIcon: (element, icon, fallback) =>
+				this.mapIcons.render(element, icon, fallback),
 			onEditIcon: canEditMapMarkerProperty(iconProperty)
 				? () => this.openPropertyEditor(key, 'icon', iconProperty)
 				: undefined,
@@ -224,14 +241,32 @@ export class MapMarkerManager {
 				this.closeEditor();
 				this.renderInspector(key);
 			},
-			onSaved: () => {
-				this.closeEditor();
-				this.renderInspector(key);
-			},
 		};
 		this.editorCleanup = kind === 'icon'
-			? createMapMarkerIconEditor(this.inspectorEl, this.app, target, callbacks)
-			: createMapMarkerColorEditor(this.inspectorEl, this.app, target, callbacks);
+			? createMapMarkerIconEditor(
+				this.inspectorEl,
+				this.app,
+				this.mapIcons,
+				target,
+				getExistingMarkerIcons(
+					this.context.entries,
+					property,
+					target.file.path,
+				),
+				callbacks,
+			)
+			: createMapMarkerColorEditor(
+				this.inspectorEl,
+				this.app,
+				target,
+				getExistingMarkerColors(
+					this.context.entries,
+					property,
+					target.file.path,
+					this.mapEl.ownerDocument,
+				),
+				callbacks,
+			);
 		this.positionConnector(record);
 	}
 
@@ -381,9 +416,41 @@ function getPresentationSignature(
 	title: string,
 	icon: string,
 	color: string,
+	iconRevision: number,
 ): string {
 	const image = getEntryText(entry, imageProperty);
-	return [title, icon, color, image].join('\u0000');
+	return [title, icon, color, image, iconRevision].join('\u0000');
+}
+
+function getExistingMarkerColors(
+	entries: readonly BasesEntry[],
+	property: BasesPropertyId,
+	excludedPath: string,
+	ownerDocument: Document,
+): string[] {
+	const colors = new Map<string, string>();
+	for (const entry of entries) {
+		if (entry.file.path === excludedPath) continue;
+		const color = getEntryText(entry, property);
+		if (!color || !ownerDocument.defaultView?.CSS.supports('color', color)) continue;
+		const key = color.toLocaleLowerCase();
+		if (!colors.has(key)) colors.set(key, color);
+	}
+	return [...colors.values()];
+}
+
+function getExistingMarkerIcons(
+	entries: readonly BasesEntry[],
+	property: BasesPropertyId,
+	excludedPath: string,
+): string[] {
+	const icons = new Set<string>();
+	for (const entry of entries) {
+		if (entry.file.path === excludedPath) continue;
+		const icon = getEntryText(entry, property);
+		if (icon) icons.add(icon);
+	}
+	return [...icons];
 }
 
 function getEntryText(entry: BasesEntry, property: BasesPropertyId | null): string {

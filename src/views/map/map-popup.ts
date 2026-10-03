@@ -23,6 +23,7 @@ export interface MapPopupContext {
 	visibleProperties: BasesPropertyId[];
 	getDisplayName: (property: BasesPropertyId) => string;
 	navigation: MarkdownNavigationService;
+	renderIcon: (element: HTMLElement, icon: string, fallback: string) => boolean;
 	onEditIcon?: () => void;
 	onEditColor?: () => void;
 	onClose: () => void;
@@ -44,8 +45,10 @@ export function createMapPopupContent(context: MapPopupContext): HTMLElement {
 		},
 	});
 	bindEntryOpen(titleEl, context);
-	renderAppearanceProperties(rootEl, context);
-	renderProperties(rootEl, context);
+	const propertiesEl = rootEl.createDiv('mbv-map-popup-properties');
+	renderAppearanceProperties(propertiesEl, context);
+	renderProperties(propertiesEl, context);
+	if (propertiesEl.childElementCount === 0) propertiesEl.remove();
 	return rootEl;
 }
 
@@ -55,7 +58,7 @@ function renderHeader(rootEl: HTMLElement, context: MapPopupContext): void {
 }
 
 function renderAppearanceProperties(
-	rootEl: HTMLElement,
+	listEl: HTMLElement,
 	context: MapPopupContext,
 ): void {
 	const properties = [
@@ -72,7 +75,6 @@ function renderAppearanceProperties(
 	];
 	const configured = properties.filter((item) => item.property);
 	if (configured.length === 0) return;
-	const listEl = rootEl.createDiv('mbv-map-popup-properties');
 	for (const item of configured) {
 		const property = item.property;
 		if (!property) continue;
@@ -88,7 +90,7 @@ function renderAppearanceProperties(
 		});
 		const value = getPropertyText(context.entry, property);
 		const valueEl = rowEl.createSpan('mbv-map-popup-value');
-		if (item.kind === 'icon') renderIconValue(valueEl, value);
+		if (item.kind === 'icon') renderIconValue(valueEl, value, context.renderIcon);
 		else renderColorValue(valueEl, value);
 		if (item.onEdit) {
 			setIcon(valueEl.createSpan('mbv-map-popup-property-chevron'), 'chevron-right');
@@ -101,10 +103,13 @@ function renderAppearanceProperties(
 	}
 }
 
-function renderIconValue(containerEl: HTMLElement, icon: string): void {
+function renderIconValue(
+	containerEl: HTMLElement,
+	icon: string,
+	renderIcon: MapPopupContext['renderIcon'],
+): void {
 	const iconEl = containerEl.createSpan('mbv-map-popup-property-icon');
-	if (icon) setIcon(iconEl, icon);
-	if (iconEl.childElementCount === 0) setIcon(iconEl, 'circle-dashed');
+	renderIcon(iconEl, icon, 'circle-dashed');
 	containerEl.createSpan({ text: icon || '未设置' });
 }
 
@@ -148,8 +153,7 @@ function renderImage(rootEl: HTMLElement, context: MapPopupContext): void {
 	});
 }
 
-function renderProperties(rootEl: HTMLElement, context: MapPopupContext): void {
-	let listEl: HTMLElement | null = null;
+function renderProperties(listEl: HTMLElement, context: MapPopupContext): void {
 	for (const property of context.visibleProperties) {
 		if (
 			property === context.options.markerIconProperty ||
@@ -157,7 +161,6 @@ function renderProperties(rootEl: HTMLElement, context: MapPopupContext): void {
 		) continue;
 		const value = context.entry.getValue(property);
 		if (!value || value instanceof NullValue || !value.toString().trim()) continue;
-		listEl ??= rootEl.createDiv('mbv-map-popup-properties');
 		const rowEl = listEl.createDiv('mbv-map-popup-row');
 		rowEl.createSpan({
 			cls: 'mbv-map-popup-label',

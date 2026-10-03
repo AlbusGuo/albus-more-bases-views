@@ -1,4 +1,4 @@
-import { setIcon } from 'obsidian';
+import type { IconService } from '../../services/icon-service';
 
 export interface MapMarkerPresentation {
 	color: string;
@@ -8,6 +8,7 @@ export interface MapMarkerPresentation {
 
 export function createMapMarkerElement(
 	ownerDocument: Document,
+	iconService: IconService,
 	presentation: MapMarkerPresentation,
 ): HTMLElement {
 	const markerEl = ownerDocument.createElement('button');
@@ -20,8 +21,7 @@ export function createMapMarkerElement(
 	if (color) pinEl.setCssProps({ '--mbv-map-marker-color': color });
 	if (presentation.icon) {
 		const iconEl = markerEl.createDiv('mbv-map-marker-icon');
-		setIcon(iconEl, presentation.icon);
-		if (iconEl.childElementCount === 0) {
+		if (!iconService.render(iconEl, presentation.icon)) {
 			iconEl.remove();
 			markerEl.createDiv('mbv-map-marker-dot');
 		}

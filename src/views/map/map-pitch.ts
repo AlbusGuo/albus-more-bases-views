@@ -7,7 +7,6 @@ const DRAG_THRESHOLD = 3;
 export function bindMapPitchDrag(
 	mapEl: HTMLElement,
 	map: MapLibreMap,
-	onRightClick: (event: MouseEvent) => void,
 ): () => void {
 	const ownerDocument = mapEl.ownerDocument;
 	let dragging = false;
@@ -40,7 +39,6 @@ export function bindMapPitchDrag(
 		if (!dragging || event.button !== 2) return;
 		dragging = false;
 		mapEl.removeClass('is-pitch-dragging');
-		if (!moved) onRightClick(event);
 	};
 	const onContextMenu = (event: MouseEvent): void => {
 		event.preventDefault();

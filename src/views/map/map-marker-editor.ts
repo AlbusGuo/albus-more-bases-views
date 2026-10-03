@@ -1,9 +1,6 @@
 import {
-	ButtonComponent,
 	ColorComponent,
 	Notice,
-	SearchComponent,
-	getIconIds,
 	parsePropertyId,
 	setIcon,
 	type App,
@@ -11,6 +8,7 @@ import {
 	type HexString,
 	type TFile,
 } from 'obsidian';
+import type { IconService } from '../../services/icon-service';
 
 export interface MapMarkerPropertyTarget {
 	file: TFile;
@@ -20,22 +18,9 @@ export interface MapMarkerPropertyTarget {
 
 interface EditorCallbacks {
 	onClose: () => void;
-	onSaved: () => void;
 }
 
 const DEFAULT_MARKER_COLOR = '#7c3aed';
-const ICON_BATCH_SIZE = 180;
-const COLOR_PRESETS: readonly { name: string; value: HexString }[] = [
-	{ name: '红色', value: '#e03131' },
-	{ name: '橙色', value: '#e8590c' },
-	{ name: '黄色', value: '#f59f00' },
-	{ name: '绿色', value: '#2f9e44' },
-	{ name: '青色', value: '#0ca678' },
-	{ name: '蓝色', value: '#1971c2' },
-	{ name: '紫色', value: '#7c3aed' },
-	{ name: '粉色', value: '#d6336c' },
-	{ name: '灰色', value: '#495057' },
-];
 
 export function canEditMapMarkerProperty(
 	property: BasesPropertyId | null,
@@ -46,119 +31,82 @@ export function canEditMapMarkerProperty(
 export function createMapMarkerIconEditor(
 	containerEl: HTMLElement,
 	app: App,
+	iconService: IconService,
 	target: MapMarkerPropertyTarget,
+	suggestedIcons: readonly string[],
 	callbacks: EditorCallbacks,
 ): () => void {
-	const iconIds = getIconIds().map(String).sort((left, right) =>
-		left.localeCompare(right),
-	);
-	const iconIdSet = new Set(iconIds);
-	const initialValue = target.value.trim();
-	let value = iconIdSet.has(initialValue)
-		? initialValue
-		: iconIdSet.has(`lucide-${initialValue}`) ? `lucide-${initialValue}` : initialValue;
-	let saving = false;
+	let value = target.value.trim();
+	let dirty = false;
 	const editorEl = createEditorShell(containerEl, '图标', callbacks.onClose);
-	const selectionEl = editorEl.createDiv('mbv-map-icon-picker-selection');
-	const previewEl = selectionEl.createSpan('mbv-map-marker-editor-icon-preview');
-	const selectionNameEl = selectionEl.createSpan('mbv-map-icon-picker-selection-name');
+	const pickerRowEl = editorEl.createDiv('mbv-map-icon-picker-row');
+	pickerRowEl.createSpan({ text: '自定义图标' });
+	const pickerButtonEl = pickerRowEl.createEl('button', {
+		cls: 'clickable-icon mbv-map-icon-picker-button',
+		attr: { type: 'button', 'aria-label': '选择标记图标' },
+	});
 	const renderSelection = (): void => {
-		previewEl.empty();
-		if (value) setIcon(previewEl, value);
-		selectionNameEl.setText(value || '默认图标');
+		iconService.render(pickerButtonEl, value, 'circle-dashed');
 	};
-	const searchWrapEl = editorEl.createDiv('mbv-map-icon-picker-search');
-	const search = new SearchComponent(searchWrapEl)
-		.setPlaceholder('搜索图标');
-	const gridEl = editorEl.createDiv('mbv-map-icon-picker-grid');
-	let filteredIcons: readonly string[] = iconIds;
-	let renderedCount = 0;
-	let selectedButtonEl: HTMLButtonElement | null = null;
-	const renderNextBatch = (): void => {
-		const nextIcons = filteredIcons.slice(
-			renderedCount,
-			renderedCount + ICON_BATCH_SIZE,
-		);
-		for (const icon of nextIcons) {
-			const buttonEl = gridEl.createEl('button', {
-				cls: 'clickable-icon mbv-map-icon-picker-item',
-				attr: { type: 'button', 'aria-label': icon },
+	pickerButtonEl.addEventListener('click', () => {
+		void iconService.pick(pickerButtonEl, value, (iconName) => {
+			value = iconName;
+			dirty = true;
+			renderSelection();
+		});
+	});
+	let suggestionsEl: HTMLElement | null = null;
+	if (suggestedIcons.length > 0) {
+		const suggestionsRowEl = editorEl.createDiv('mbv-map-icon-suggestions-row');
+		suggestionsRowEl.createSpan({ text: '已有图标' });
+		suggestionsEl = suggestionsRowEl.createDiv('mbv-map-icon-suggestions');
+	}
+	const renderSuggestions = (): void => {
+		if (!suggestionsEl) return;
+		suggestionsEl.empty();
+		for (const icon of suggestedIcons) {
+			const buttonEl = suggestionsEl.createEl('button', {
+				cls: 'clickable-icon mbv-map-icon-suggestion',
+				attr: { type: 'button', 'aria-label': `使用已有图标 ${icon}` },
 			});
-			setIcon(buttonEl, icon);
-			if (icon === value) {
-				buttonEl.addClass('is-selected');
-				selectedButtonEl = buttonEl;
+			if (!iconService.render(buttonEl, icon)) {
+				buttonEl.remove();
+				continue;
 			}
 			buttonEl.addEventListener('click', () => {
-				selectedButtonEl?.removeClass('is-selected');
 				value = icon;
-				selectedButtonEl = buttonEl;
-				buttonEl.addClass('is-selected');
+				dirty = true;
 				renderSelection();
 			});
 		}
-		renderedCount += nextIcons.length;
 	};
-	const filterIcons = (query: string): void => {
-		const normalized = query.trim().toLowerCase();
-		filteredIcons = normalized
-			? iconIds.filter((icon) => icon.toLowerCase().includes(normalized))
-			: iconIds;
-		gridEl.empty();
-		renderedCount = 0;
-		selectedButtonEl = null;
-		renderNextBatch();
-	};
-	search.onChange(filterIcons);
-	gridEl.addEventListener('scroll', () => {
-		if (gridEl.scrollTop + gridEl.clientHeight < gridEl.scrollHeight - 48) return;
-		renderNextBatch();
+	const releaseIconListener = iconService.onChanged(() => {
+		renderSelection();
+		renderSuggestions();
 	});
-	const actionsEl = editorEl.createDiv('mbv-map-marker-editor-actions');
-	new ButtonComponent(actionsEl)
-		.setButtonText('清除')
-		.onClick(() => {
-			value = '';
-			selectedButtonEl?.removeClass('is-selected');
-			selectedButtonEl = null;
-			renderSelection();
-		});
-	const saveButton = new ButtonComponent(actionsEl)
-		.setCta()
-		.setButtonText('保存')
-		.onClick(() => {
-			if (saving) return;
-			if (value && !iconIdSet.has(value)) {
-				new Notice('请选择有效的 Obsidian 图标.');
-				return;
-			}
-			saving = true;
-			saveButton.setDisabled(true);
-			void saveProperty(app, target, value).then(() => {
-				target.value = value;
-				saving = false;
-				saveButton.setDisabled(false);
-				callbacks.onSaved();
-			}, () => {
-				new Notice('保存标记图标失败.');
-				saving = false;
-				saveButton.setDisabled(false);
-			});
-		});
 	renderSelection();
-	renderNextBatch();
-	search.inputEl.focus();
-	return () => editorEl.remove();
+	renderSuggestions();
+	pickerButtonEl.focus();
+	return createAutoSaveCleanup(
+		editorEl,
+		app,
+		target,
+		() => value,
+		() => dirty,
+		'保存标记图标失败.',
+		() => releaseIconListener(),
+	);
 }
 
 export function createMapMarkerColorEditor(
 	containerEl: HTMLElement,
 	app: App,
 	target: MapMarkerPropertyTarget,
+	suggestedColors: readonly string[],
 	callbacks: EditorCallbacks,
 ): () => void {
 	let value = toPickerColor(containerEl.ownerDocument, target.value);
-	let saving = false;
+	let dirty = false;
 	const editorEl = createEditorShell(containerEl, '颜色', callbacks.onClose);
 	const nativePickerEl = editorEl.createDiv('mbv-map-native-color-picker');
 	const picker = new ColorComponent(nativePickerEl).setValue(value);
@@ -173,53 +121,61 @@ export function createMapMarkerColorEditor(
 		value,
 		() => openNativeColorPicker(pickerInputEl),
 	);
-	const presetsRowEl = editorEl.createDiv('mbv-map-color-presets-row');
-	presetsRowEl.createSpan({ text: '预设颜色' });
-	const presetsEl = presetsRowEl.createDiv('mbv-map-color-presets');
 	const renderCurrentColor = (): void => {
 		customSwatchEl.setCssProps({
 			'--mbv-map-swatch-color': value || DEFAULT_MARKER_COLOR,
 		});
 	};
-	for (const preset of COLOR_PRESETS) {
-		createColorSwatch(presetsEl, preset.name, preset.value, () => {
-			value = preset.value;
-			picker.setValue(preset.value);
-			renderCurrentColor();
-		});
+	if (suggestedColors.length > 0) {
+		const suggestionsRowEl = editorEl.createDiv('mbv-map-color-presets-row');
+		suggestionsRowEl.createSpan({ text: '已有颜色' });
+		const suggestionsEl = suggestionsRowEl.createDiv('mbv-map-color-presets');
+		for (const color of suggestedColors) {
+			createColorSwatch(suggestionsEl, `使用已有颜色 ${color}`, color, () => {
+				value = color;
+				dirty = true;
+				picker.setValue(toPickerColor(containerEl.ownerDocument, color));
+				renderCurrentColor();
+			});
+		}
 	}
 	picker.onChange((nextValue) => {
 		value = nextValue;
+		dirty = true;
 		renderCurrentColor();
 	});
-	const actionsEl = editorEl.createDiv('mbv-map-marker-editor-actions');
-	new ButtonComponent(actionsEl)
-		.setButtonText('清除')
-		.onClick(() => {
-			value = '';
-			picker.setValue(DEFAULT_MARKER_COLOR);
-			renderCurrentColor();
-		});
-	const saveButton = new ButtonComponent(actionsEl)
-		.setCta()
-		.setButtonText('保存')
-		.onClick(() => {
-			if (saving) return;
-			saving = true;
-			saveButton.setDisabled(true);
-			void saveProperty(app, target, value).then(() => {
-				target.value = value;
-				saving = false;
-				saveButton.setDisabled(false);
-				callbacks.onSaved();
-			}, () => {
-				new Notice('保存标记颜色失败.');
-				saving = false;
-				saveButton.setDisabled(false);
-			});
-		});
 	renderCurrentColor();
-	return () => editorEl.remove();
+	return createAutoSaveCleanup(
+		editorEl,
+		app,
+		target,
+		() => value,
+		() => dirty,
+		'保存标记颜色失败.',
+	);
+}
+
+function createAutoSaveCleanup(
+	editorEl: HTMLElement,
+	app: App,
+	target: MapMarkerPropertyTarget,
+	getValue: () => string,
+	isDirty: () => boolean,
+	errorMessage: string,
+	beforeRemove?: () => void,
+): () => void {
+	let closed = false;
+	return () => {
+		if (closed) return;
+		closed = true;
+		beforeRemove?.();
+		editorEl.remove();
+		if (!isDirty()) return;
+		const value = getValue();
+		void saveProperty(app, target, value).then(() => {
+			target.value = value;
+		}, () => new Notice(errorMessage));
+	};
 }
 
 function createColorSwatch(

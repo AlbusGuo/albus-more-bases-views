@@ -3596,12 +3596,16 @@ button:not(.clickable-icon).mbv-movie-rating-button:focus-visible,
 	gap: 2px;
 	margin: 0 10px;
 	padding: 6px 0 8px;
-	border-top: 1px solid var(--background-modifier-border);
 }
 
 .mbv-map-popup-row {
 	display: flex;
+	width: 100%;
 	box-sizing: border-box;
+	min-height: 24px;
+	padding: 3px 4px;
+	border-radius: var(--radius-s);
+	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
 	min-width: 0;
@@ -3610,9 +3614,7 @@ button:not(.clickable-icon).mbv-movie-rating-button:focus-visible,
 button.mbv-map-popup-property-button {
 	width: 100%;
 	margin: 0;
-	padding: 4px;
 	border: 0;
-	border-radius: var(--radius-s);
 	background: transparent;
 	box-shadow: none;
 	color: inherit;
@@ -3792,76 +3794,7 @@ button.mbv-map-marker:focus-visible {
 	font-weight: var(--font-semibold);
 }
 
-.mbv-map-icon-picker-selection {
-	display: flex;
-	min-width: 0;
-	align-items: center;
-	gap: var(--size-4-2);
-	flex: 0 0 auto;
-}
-
-.mbv-map-icon-picker-selection-name {
-	min-width: 0;
-	overflow: hidden;
-	color: var(--text-muted);
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.mbv-map-marker-editor-icon-preview {
-	display: flex;
-	width: var(--input-height);
-	height: var(--input-height);
-	box-sizing: border-box;
-	flex: 0 0 var(--input-height);
-	border: var(--border-width) solid var(--background-modifier-border);
-	border-radius: var(--input-radius);
-	background: var(--background-modifier-form-field);
-	align-items: center;
-	justify-content: center;
-	color: var(--icon-color);
-}
-
-.mbv-map-marker-editor-icon-preview svg {
-	width: var(--icon-m);
-	height: var(--icon-m);
-}
-
-.mbv-map-icon-picker-search,
-.mbv-map-icon-picker-search .search-input-container,
-.mbv-map-icon-picker-search input {
-	width: 100%;
-}
-
-.mbv-map-icon-picker-search {
-	flex: 0 0 auto;
-}
-
-.mbv-map-icon-picker-grid {
-	display: grid;
-	min-height: 72px;
-	max-height: 224px;
-	overflow-y: auto;
-	flex: 1 1 224px;
-	padding: 4px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	background: var(--background-primary);
-	grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
-	gap: 2px;
-}
-
-button.mbv-map-icon-picker-item {
-	width: 100%;
-	height: 32px;
-	padding: 6px;
-}
-
-button.mbv-map-icon-picker-item.is-selected {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-}
-
+.mbv-map-icon-picker-row,
 .mbv-map-color-picker-row {
 	display: flex;
 	min-height: 20px;
@@ -3874,9 +3807,41 @@ button.mbv-map-icon-picker-item.is-selected {
 	color: var(--text-muted);
 }
 
+.mbv-map-icon-picker-row > span:first-child,
 .mbv-map-color-picker-row > span:first-child {
 	min-width: 0;
 	flex: 1 1 auto;
+}
+
+button.mbv-map-icon-picker-button.clickable-icon {
+	width: 20px;
+	height: 20px;
+	min-width: 20px;
+	min-height: 20px;
+	max-width: 20px;
+	max-height: 20px;
+	padding: 2px;
+	color: var(--icon-color);
+}
+
+button.mbv-map-icon-picker-button.clickable-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.mbv-map-icon-suggestions-row,
+.mbv-map-color-presets-row {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--size-4-3);
+	color: var(--text-muted);
+}
+
+.mbv-map-icon-suggestions-row > span:first-child,
+.mbv-map-color-presets-row > span:first-child {
+	flex: 0 0 auto;
 }
 
 .mbv-map-native-color-picker {
@@ -3888,26 +3853,32 @@ button.mbv-map-icon-picker-item.is-selected {
 	pointer-events: none;
 }
 
-.mbv-map-color-presets-row {
-	display: flex;
-	min-width: 0;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--size-4-3);
-	color: var(--text-muted);
-}
-
-.mbv-map-color-presets-row > span:first-child {
-	flex: 0 0 auto;
-}
-
+.mbv-map-icon-suggestions,
 .mbv-map-color-presets {
 	display: flex;
 	min-width: 0;
+	max-height: 72px;
+	overflow-y: auto;
 	flex: 1 1 auto;
 	flex-wrap: wrap;
 	justify-content: flex-end;
+	padding: 2px;
 	gap: 4px;
+}
+
+button.mbv-map-icon-suggestion.clickable-icon {
+	width: 20px;
+	height: 20px;
+	min-width: 20px;
+	min-height: 20px;
+	max-width: 20px;
+	max-height: 20px;
+	padding: 2px;
+}
+
+button.mbv-map-icon-suggestion.clickable-icon svg {
+	width: 14px;
+	height: 14px;
 }
 
 .mbv-map-color-swatch {
@@ -3950,13 +3921,6 @@ button.mbv-map-color-swatch:focus-visible {
 button.mbv-map-color-swatch:focus-visible {
 	outline: 1px solid var(--interactive-accent);
 	outline-offset: 1px;
-}
-
-.mbv-map-marker-editor-actions {
-	display: flex;
-	flex: 0 0 auto;
-	justify-content: flex-end;
-	gap: var(--size-4-2);
 }
 
 @media (prefers-reduced-motion: reduce) {
