@@ -386,6 +386,20 @@
 	text-overflow: ellipsis;
 }
 
+.mbv-bases-view-tabs.is-measuring-labels .mbv-bases-view-tab.clickable-icon {
+	flex-shrink: 0;
+}
+
+.mbv-bases-view-tabs.is-icon-only .mbv-bases-view-tab.clickable-icon {
+	justify-content: center;
+	gap: 0;
+	padding-inline: var(--size-2-2);
+}
+
+.mbv-bases-view-tabs.is-icon-only .mbv-bases-view-tab-name {
+	display: none;
+}
+
 .mbv-bases-view-add.clickable-icon {
 	flex: 0 0 auto;
 	height: var(--input-height);

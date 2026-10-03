@@ -193,7 +193,9 @@ class BasesTabsInstance {
 	private readonly addButtonEl: HTMLButtonElement;
 	private readonly nativeViewsButtonEl: HTMLElement;
 	private readonly observer: MutationObserver;
+	private readonly resizeObserver: ResizeObserver;
 	private refreshFrame: number | null = null;
+	private responsiveFrame: number | null = null;
 	private renderSignature = '';
 	private destroyed = false;
 	private pointerDrag: TabPointerDragState | null = null;
@@ -233,6 +235,15 @@ class BasesTabsInstance {
 		this.headerEl.addClass('mbv-bases-tabs-enabled');
 
 		this.observer = new MutationObserver(() => this.scheduleRefresh());
+		const ResizeObserverConstructor =
+			this.containerEl.ownerDocument.defaultView?.ResizeObserver ?? ResizeObserver;
+		this.resizeObserver = new ResizeObserverConstructor(() =>
+			this.scheduleResponsiveLayout());
+		this.resizeObserver.observe(this.headerEl);
+		const toolbarEl = this.headerEl.querySelector<HTMLElement>('.bases-toolbar');
+		if (toolbarEl) this.resizeObserver.observe(toolbarEl);
+		this.resizeObserver.observe(this.containerEl);
+		this.resizeObserver.observe(this.listEl);
 		this.observeControllerMenu();
 		this.refresh();
 	}
@@ -283,6 +294,7 @@ class BasesTabsInstance {
 				attr: {
 					type: 'button',
 					'aria-pressed': String(view.name === activeViewName),
+					'aria-label': view.name,
 				},
 			});
 			const iconEl = tabEl.createSpan('mbv-bases-view-tab-icon');
@@ -304,6 +316,7 @@ class BasesTabsInstance {
 			});
 			this.bindTabDrag(tabEl, view.name);
 		}
+		this.scheduleResponsiveLayout();
 	}
 
 	refreshIcons(): void {
@@ -411,7 +424,12 @@ class BasesTabsInstance {
 			this.headerEl.win.cancelAnimationFrame(this.refreshFrame);
 			this.refreshFrame = null;
 		}
+		if (this.responsiveFrame !== null) {
+			this.headerEl.win.cancelAnimationFrame(this.responsiveFrame);
+			this.responsiveFrame = null;
+		}
 		this.observer.disconnect();
+		this.resizeObserver.disconnect();
 		const root = this.controller.viewMenu?.toolbarItem?.scrollEl ??
 			this.nativeViewsMenuEl;
 		root.querySelectorAll('.mbv-bases-view-icon-picker').forEach((element) =>
@@ -687,6 +705,7 @@ class BasesTabsInstance {
 			delete tab.dataset.dragging;
 			tab.style.removeProperty('translate');
 		}
+		this.scheduleResponsiveLayout();
 	}
 
 	private startAutoScroll(): void {
@@ -762,6 +781,23 @@ class BasesTabsInstance {
 			this.refreshFrame = null;
 			this.refresh();
 		});
+	}
+
+	private scheduleResponsiveLayout(): void {
+		if (this.destroyed || this.responsiveFrame !== null) return;
+		this.responsiveFrame = this.headerEl.win.requestAnimationFrame(() => {
+			this.responsiveFrame = null;
+			this.updateResponsiveLayout();
+		});
+	}
+
+	private updateResponsiveLayout(): void {
+		if (this.destroyed || this.pointerDrag) return;
+		this.containerEl.removeClass('is-icon-only');
+		this.containerEl.addClass('is-measuring-labels');
+		const labelsFit = this.listEl.scrollWidth <= this.listEl.clientWidth + 1;
+		this.containerEl.removeClass('is-measuring-labels');
+		this.containerEl.toggleClass('is-icon-only', !labelsFit);
 	}
 }
 
