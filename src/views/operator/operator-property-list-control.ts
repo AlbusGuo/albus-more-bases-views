@@ -87,7 +87,7 @@ export class OperatorPropertyListControl {
 			this.addIconButton(
 				rowEl,
 				`删除${options.name}`,
-				'x',
+				'trash-2',
 				() => options.onRemove(index),
 			);
 		});
@@ -152,7 +152,12 @@ export class OperatorPropertyListControl {
 			for (const option of branches) branchDropdown.addOption(option, option);
 			branchDropdown.setValue(branch).onChange((nextBranch) => options.onChange(index, nextBranch || main, true));
 			branchDropdown.selectEl.setAttribute('aria-label', `${options.name}${hierarchy.branchLabel} ${index + 1}`);
-			this.addIconButton(rowEl, `删除${options.name}`, 'x', () => options.onRemove(index));
+			this.addIconButton(
+				rowEl,
+				`删除${options.name}`,
+				'trash-2',
+				() => options.onRemove(index),
+			);
 		});
 		this.addIconButton(listEl, `添加${options.name}`, 'plus', options.onAdd, 'mbv-operator-property-list-add');
 	}

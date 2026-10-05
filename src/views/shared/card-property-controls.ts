@@ -82,7 +82,7 @@ export function renderCardPropertyList(
 				suggestions.addMarkdownFiles(inputEl, options.pdfFiles, choose);
 			} else suggestions.addValues(inputEl, options.suggestionValues, choose);
 		}
-		addIconButton(rowEl, `删除${options.name}`, 'x', () => options.onRemove(index));
+		addIconButton(rowEl, `删除${options.name}`, 'trash-2', () => options.onRemove(index));
 	});
 	addIconButton(
 		listEl,

@@ -114,7 +114,7 @@ class IndexTagEditorModal extends Modal {
 			cls: 'clickable-icon mbv-index-tag-field-delete',
 			attr: { type: 'button', 'aria-label': '删除标签' },
 		});
-		setIcon(deleteButtonEl, 'x');
+		setIcon(deleteButtonEl, 'trash-2');
 		deleteButtonEl.addEventListener('click', () => {
 			suggester.close();
 			this.suggesters.delete(inputEl);

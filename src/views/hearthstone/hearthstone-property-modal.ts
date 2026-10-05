@@ -38,6 +38,7 @@ import { bindArtworkPointerEditor } from '../shared/artwork-pointer-editor';
 import { formatArtworkPosition, parseArtworkPosition, type ArtworkPosition } from '../shared/artwork-position';
 import { InlineMarkdownEditor } from '../../ui/inline-markdown-editor';
 import { AutoSavePropertyModal } from '../shared/auto-save-property-modal';
+import { prepareEditorModal } from '../shared/editor-modal-layout';
 import { renameNoteFile } from '../shared/property-editing';
 
 type ModalField = MinionField;
@@ -104,7 +105,9 @@ export class MinionPropertyModal extends AutoSavePropertyModal<ModalField> {
 	}
 
 	onOpen(): void {
-		this.closed = false; this.setTitle('编辑卡牌'); this.modalEl.addClass('mbv-hs-property-modal');
+		this.closed = false;
+		prepareEditorModal(this.titleEl);
+		this.modalEl.addClass('mbv-hs-property-modal');
 		this.contentEl.addClass('mbv-hs-property-editor'); this.imageFiles = listVaultImages(this.app);
 		this.noteFiles = this.suggestionData.noteFiles.filter(file => file !== this.file);
 		this.cardNumberValues = [...this.suggestionData.cardNumbers];

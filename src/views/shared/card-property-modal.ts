@@ -23,6 +23,7 @@ import type {
 	CardPropertyPreviewFactory,
 } from './card-property-editor-types';
 import { CardPropertyPreview } from './card-property-preview';
+import { prepareEditorModal } from './editor-modal-layout';
 import {
 	CardPropertySuggestions,
 	renderCardPropertyList,
@@ -66,7 +67,7 @@ export class CardPropertyModal<Options>
 	}
 
 	onOpen(): void {
-		this.setTitle(this.definition.title);
+		prepareEditorModal(this.titleEl);
 		this.modalEl.addClass('mbv-card-property-modal');
 		this.contentEl.addClass('mbv-card-property-editor');
 		const previewEl = this.contentEl.createDiv('mbv-card-property-preview');

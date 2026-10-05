@@ -9,6 +9,7 @@ import {
 } from 'obsidian';
 import { listVaultImages } from '../../ui/vault-image-suggest';
 import { AutoSavePropertyModal } from '../shared/auto-save-property-modal';
+import { prepareEditorModal } from '../shared/editor-modal-layout';
 import {
 	readFrontmatter,
 	renameNoteFile,
@@ -72,7 +73,9 @@ export class OperatorPropertyModal extends AutoSavePropertyModal<OperatorField> 
 	}
 
 	onOpen(): void {
-		this.closed = false; this.setTitle('编辑干员'); this.modalEl.addClass('mbv-operator-property-modal');
+		this.closed = false;
+		prepareEditorModal(this.titleEl);
+		this.modalEl.addClass('mbv-operator-property-modal');
 		this.contentEl.addClass('mbv-operator-property-editor'); this.imageFiles = listVaultImages(this.app); this.load();
 		this.listControl = new OperatorPropertyListControl(this.app, this.imageFiles);
 		this.previewEl = this.contentEl.createDiv('mbv-operator-property-preview');
