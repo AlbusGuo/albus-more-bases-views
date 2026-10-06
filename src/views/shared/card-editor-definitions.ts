@@ -23,6 +23,7 @@ export const BOOK_CARD_EDITOR: CardPropertyEditorDefinition<BookViewOptions> = {
 	fields: [
 		filenameField<BookViewOptions>('title', '书名'),
 		propertyField('cover', '封面', 'image', (options) => options.coverProperty),
+		propertyField('series', '合集', 'text', (options) => options.seriesProperty),
 		propertyField('attachment', '附件', 'pdf', (options) => options.fileLinkProperty),
 		propertyField('status', '阅读状态', 'reading-status', (options) => options.statusProperty),
 	],

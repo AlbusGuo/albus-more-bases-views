@@ -75,6 +75,7 @@ export class BasesViewTabsService {
 	constructor(
 		private readonly app: App,
 		private readonly iconService: IconService,
+		private readonly groupingDisabledViewTypes: ReadonlySet<string> = new Set(),
 	) {
 		this.releaseIconListener = this.iconService.onChanged(() =>
 			this.refreshViewIcons());
@@ -158,6 +159,7 @@ export class BasesViewTabsService {
 			headerEl,
 			controller,
 			this.iconService,
+			this.groupingDisabledViewTypes,
 			() => this.handleViewIconChanged(),
 		);
 		if (instance) this.instances.set(headerEl, instance);
@@ -204,6 +206,7 @@ class BasesTabsInstance {
 		private readonly nativeViewsMenuEl: HTMLElement,
 		private controller: InternalQueryController,
 		private readonly iconService: IconService,
+		private readonly groupingDisabledViewTypes: ReadonlySet<string>,
 		private readonly onViewIconChanged: () => void,
 	) {
 		this.nativeViewsButtonEl =
@@ -246,6 +249,7 @@ class BasesTabsInstance {
 		headerEl: HTMLElement,
 		controller: InternalQueryController,
 		iconService: IconService,
+		groupingDisabledViewTypes: ReadonlySet<string>,
 		onViewIconChanged: () => void,
 	): BasesTabsInstance | null {
 		const nativeViewsMenuEl =
@@ -256,6 +260,7 @@ class BasesTabsInstance {
 			nativeViewsMenuEl,
 			controller,
 			iconService,
+			groupingDisabledViewTypes,
 			onViewIconChanged,
 		);
 	}
@@ -273,6 +278,11 @@ class BasesTabsInstance {
 		const views = getViews(this.controller);
 		if (views.length === 0) return;
 		const activeViewName = this.controller.viewName ?? views[0]?.name ?? '';
+		const activeView = views.find((view) => view.name === activeViewName);
+		this.headerEl.classList.toggle(
+			'mbv-bases-grouping-disabled',
+			Boolean(activeView && this.groupingDisabledViewTypes.has(activeView.type)),
+		);
 		const signature = JSON.stringify([
 			activeViewName,
 			...views.map((view) =>
@@ -440,6 +450,7 @@ class BasesTabsInstance {
 		this.nativeViewsMenuEl.style.removeProperty('inset-inline-start');
 		this.nativeViewsMenuEl.style.removeProperty('top');
 		this.headerEl.removeClass('mbv-bases-tabs-enabled');
+		this.headerEl.removeClass('mbv-bases-grouping-disabled');
 	}
 
 	private selectView(name: string, anchorEl: HTMLElement): void {

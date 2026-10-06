@@ -38,8 +38,10 @@ export function createDevelopmentSelector(
 	bindProjectStatusMenu(button, state, {
 		statuses: PROJECT_DEVELOPMENT_STATUSES,
 		icons: {
-			阶段完成: 'circle-check',
+			已竣工: 'badge-check',
 			开发中: 'code-2',
+			阶段完成: 'milestone',
+			已中止: 'ban',
 		},
 		property: (context) => context.options.developmentStatusProperty,
 		read: getProjectDevelopmentStatus,
@@ -138,11 +140,18 @@ function bindProjectStatusMenu<Status extends string>(
 	state: { context: ProjectStatusContext },
 	config: ProjectStatusMenuConfig<Status>,
 ): void {
+	let openMenu: Menu | null = null;
+	let menuClosedAt = 0;
 	button.addEventListener('keydown', (event) => event.stopPropagation());
 	button.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
 		if (button.dataset.saving === 'true') return;
+		if (openMenu) {
+			openMenu.hide();
+			return;
+		}
+		if (Date.now() - menuClosedAt < 200) return;
 		const property = config.property(state.context);
 		if (!property) return;
 		const renderedStatus = button.dataset.status;
@@ -150,6 +159,12 @@ function bindProjectStatusMenu<Status extends string>(
 			(status) => status === renderedStatus,
 		) ?? config.read(state.context.entry.getValue(property));
 		const menu = new Menu();
+		openMenu = menu;
+		menu.onHide(() => {
+			if (openMenu !== menu) return;
+			openMenu = null;
+			menuClosedAt = Date.now();
+		});
 		for (const status of config.statuses) {
 			menu.addItem((item) => item
 				.setTitle(status)

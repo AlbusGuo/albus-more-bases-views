@@ -64,7 +64,7 @@ export function getProjectViewOptions(): BasesAllOptions[] {
 					...propertyOption(
 						'developmentStatusProperty',
 						'开发状态属性',
-						'阶段完成 / 开发中',
+						'已竣工 / 开发中 / 阶段完成 / 已中止',
 					),
 					filter: (property: BasesPropertyId) => property.startsWith('note.'),
 				},

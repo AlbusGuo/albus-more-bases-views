@@ -91,7 +91,6 @@ export class HearthstoneView extends CardGalleryView<HearthstoneOptions, Hearths
 			images: this.images, work: this.work, surfaceMasks: this.surfaceMasks,
 			resetPointer: card => this.interaction.resetPointer(card.element),
 			prepareEditor: card => {
-				this.interaction.collapse();
 				this.interaction.resetPointer(card.element);
 			},
 			openEditor: entry => this.requestCardEditor(entry),

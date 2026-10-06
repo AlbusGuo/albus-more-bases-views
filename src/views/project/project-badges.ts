@@ -23,13 +23,18 @@ export function getGithubUrl(repositoryPath: string): string {
 export function getDevelopmentBadgeUrl(
 	status: ProjectDevelopmentStatus,
 ): string {
-	const complete = status === '阶段完成';
+	const colors: Record<ProjectDevelopmentStatus, string> = {
+		已竣工: '#4c1',
+		开发中: '#fe7d37',
+		阶段完成: '#007ec6',
+		已中止: '#e05d44',
+	};
 	return getLocalBadgeUrl(
 		'Status',
 		status,
-		complete ? '#4c1' : '#fe7d37',
+		colors[status],
 		42,
-		complete ? 58 : 47,
+		status.length >= 4 ? 58 : 47,
 	);
 }
 

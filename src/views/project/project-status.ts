@@ -1,4 +1,9 @@
-export const PROJECT_DEVELOPMENT_STATUSES = ['阶段完成', '开发中'] as const;
+export const PROJECT_DEVELOPMENT_STATUSES = [
+	'已竣工',
+	'开发中',
+	'阶段完成',
+	'已中止',
+] as const;
 export type ProjectDevelopmentStatus =
 	typeof PROJECT_DEVELOPMENT_STATUSES[number];
 
@@ -9,7 +14,10 @@ export function getProjectDevelopmentStatus(
 	value: unknown,
 ): ProjectDevelopmentStatus {
 	const text = statusText(value);
-	if (text === '阶段完成' || text === '开发中') return text;
+	if (
+		text === '已竣工' || text === '开发中' ||
+		text === '阶段完成' || text === '已中止'
+	) return text;
 	return getLegacyStatus(value) ? '阶段完成' : '开发中';
 }
 

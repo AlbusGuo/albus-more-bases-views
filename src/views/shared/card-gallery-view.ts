@@ -399,7 +399,7 @@ export abstract class CardGalleryView<
 		};
 	}
 
-	private createCardContext(entry: BasesEntry): Context {
+	protected createCardContext(entry: BasesEntry): Context {
 		return this.extendCardContext({
 			app: this.app,
 			ownerEl: this.containerEl,

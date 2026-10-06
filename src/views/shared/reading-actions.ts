@@ -46,6 +46,8 @@ export function createReadingActions<T extends ReadingActionsContext>(
 	let currentStatus: ReadingStatus = '未读';
 	let statusSaving = false;
 	let attachmentOpening = false;
+	let statusMenu: Menu | null = null;
+	let statusMenuClosedAt = 0;
 
 	const attachmentButton = parentEl.createEl('button', {
 		cls: `${appearance.actionClass} ${appearance.attachmentClass}`,
@@ -88,9 +90,20 @@ export function createReadingActions<T extends ReadingActionsContext>(
 		event.preventDefault();
 		event.stopPropagation();
 		if (statusSaving) return;
+		if (statusMenu) {
+			statusMenu.hide();
+			return;
+		}
+		if (Date.now() - statusMenuClosedAt < 200) return;
 		const property = context.options.statusProperty;
 		if (!property) return;
 		const menu = new Menu();
+		statusMenu = menu;
+		menu.onHide(() => {
+			if (statusMenu !== menu) return;
+			statusMenu = null;
+			statusMenuClosedAt = Date.now();
+		});
 		for (const status of READING_STATUS_VALUES) {
 			menu.addItem((item) => item
 				.setTitle(status)
@@ -157,6 +170,7 @@ export function createReadingActions<T extends ReadingActionsContext>(
 		);
 		const statusProperty = context.options.statusProperty;
 		statusButton.classList.toggle('is-hidden', !statusProperty);
+		if (!statusProperty) statusMenu?.hide();
 		if (statusProperty && !statusSaving) {
 			renderStatus(getReadingStatus(context.entry.getValue(statusProperty)));
 		}

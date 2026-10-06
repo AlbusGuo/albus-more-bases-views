@@ -128,7 +128,6 @@ export class CardView extends CardGalleryView<
 
 	protected onCardCreated(card: CollectibleCardController): void {
 		card.prepareOpenEditor = () => {
-			this.interaction.collapse();
 			this.interaction.resetPointer(card.element);
 		};
 		this.interaction.register(card);

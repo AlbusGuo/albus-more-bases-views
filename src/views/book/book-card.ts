@@ -14,6 +14,10 @@ import {
 } from './book-properties';
 import { createReadingActions } from '../shared/reading-actions';
 import { isEmptyValue } from '../shared/card-value-utils';
+import type {
+	BookSeriesCollection,
+	BookSeriesTransitionSource,
+} from './book-series';
 
 const BOOK_READING_ACTIONS = {
 	actionClass: 'mbv-book-action',
@@ -28,11 +32,18 @@ export interface BookCardContext {
 	options: BookViewOptions;
 	visibleProperties: BasesPropertyId[];
 	navigation: MarkdownNavigationService;
+	seriesCollection?: BookSeriesCollection;
+	openSeries?: (
+		collection: BookSeriesCollection,
+		source: BookSeriesTransitionSource,
+	) => void;
 }
 
 export interface BookCardController {
 	element: HTMLElement;
 	update: (context: BookCardContext) => void;
+	destroy?: () => void;
+	canOpenEditor?: () => boolean;
 }
 
 export function createBookCard(

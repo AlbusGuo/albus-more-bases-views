@@ -19,6 +19,8 @@ export interface BookViewOptions {
 	coverProperty: BasesPropertyId | null;
 	fileLinkProperty: BasesPropertyId | null;
 	statusProperty: BasesPropertyId | null;
+	seriesProperty: BasesPropertyId | null;
+	collapseSeries: boolean;
 	openWith: AttachmentOpenMode;
 	markdownOpenMode: MarkdownOpenMode;
 }
@@ -30,9 +32,21 @@ export function getBookViewOptions(
 		createMarkdownOpenModeOption(),
 		createCardMinWidthOption('封面最小宽度'),
 		{
+			type: 'toggle',
+			key: 'collapseSeries',
+			displayName: '收纳书籍合集',
+			default: false,
+		},
+		{
 			type: 'group',
 			displayName: '内容',
 			items: [
+				{
+					type: 'property',
+					key: 'seriesProperty',
+					displayName: '合集属性',
+					placeholder: '相同合集的书籍将收纳在一起',
+				},
 				{
 					type: 'property',
 					key: 'coverProperty',
@@ -75,6 +89,8 @@ export function readBookViewOptions(config: BasesViewConfig): BookViewOptions {
 		coverProperty: config.getAsPropertyId('coverProperty'),
 		fileLinkProperty: config.getAsPropertyId('fileLinkProperty'),
 		statusProperty: config.getAsPropertyId('statusProperty'),
+		seriesProperty: config.getAsPropertyId('seriesProperty'),
+		collapseSeries: config.get('collapseSeries') === true,
 		openWith: config.get('openWith') === 'system' ? 'system' : 'obsidian',
 		markdownOpenMode: readMarkdownOpenMode(config),
 	};

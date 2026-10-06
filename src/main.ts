@@ -84,7 +84,11 @@ export default class MoreBasesViewsPlugin extends Plugin {
 		this.register(() => operatorAssets.destroy());
 		const icons = new IconService(this.app, this.manifest.id);
 		this.register(() => icons.destroy());
-		const viewTabs = new BasesViewTabsService(this.app, icons);
+		const viewTabs = new BasesViewTabsService(this.app, icons, new Set([
+			MAP_VIEW_TYPE,
+			TIER_VIEW_TYPE,
+			INDEX_VIEW_TYPE,
+		]));
 		viewTabs.start();
 		this.register(() => viewTabs.destroy());
 		const tablePropertyManager = new TablePropertyManagerService(this.app);
