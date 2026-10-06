@@ -2,6 +2,7 @@ import {
 	BasesView,
 	type App,
 	type BasesEntry,
+	type BasesEntryGroup,
 	type BasesPropertyId,
 	type BasesViewConfig,
 	type Modal,
@@ -12,7 +13,10 @@ import { attachBasesSearchProperties } from '../../services/bases-search-propert
 import { CardGalleryHtmlExporter } from '../../services/card-gallery-html-exporter';
 import type { MarkdownNavigationService } from '../../services/markdown-navigation';
 import { AnimationFrameTask } from '../../ui/animation-frame-task';
-import { createBasesViewportGroups } from '../../ui/bases-entry-groups';
+import {
+	createBasesViewportGroups,
+	getBasesGroupId,
+} from '../../ui/bases-entry-groups';
 import { ViewportGrid, type ViewportGridGroup } from '../../ui/viewport-grid';
 import {
 	CardPropertyModal,
@@ -32,6 +36,15 @@ export interface CardGalleryCardContext<Options> {
 	options: Options;
 	visibleProperties: BasesPropertyId[];
 	navigation: MarkdownNavigationService;
+}
+
+interface GroupFoldController extends QueryController {
+	getGroupFolds?: () => Set<string>;
+	saveGroupFolds?: () => void;
+}
+
+interface GroupedViewConfig extends BasesViewConfig {
+	groupBy?: { property?: BasesPropertyId };
 }
 
 export interface CardGalleryCardController<Context> {
@@ -83,6 +96,8 @@ export abstract class CardGalleryView<
 	private groups: readonly ViewportGridGroup<BasesEntry>[] = createBasesViewportGroups([]);
 	private readonly dataUpdateTask: AnimationFrameTask;
 	private readonly editorHost: CardEditorHost<Context>;
+	private readonly groupFoldController: GroupFoldController;
+	private readonly fallbackGroupFolds = new Set<string>();
 
 	protected constructor(
 		controller: QueryController,
@@ -97,6 +112,7 @@ export abstract class CardGalleryView<
 		>,
 	) {
 		super(controller);
+		this.groupFoldController = controller;
 		this.register(attachBasesSearchProperties(
 			controller,
 			() => definition.readOptions(this.config),
@@ -165,8 +181,16 @@ export abstract class CardGalleryView<
 		this.currentOptions = this.definition.readOptions(this.config);
 		this.visibleProperties = this.config.getOrder();
 		this.onOptionsChanged(this.currentOptions, previousOptions);
+		const groupProperty = (this.config as GroupedViewConfig).groupBy?.property;
 		this.groups = this.transformGalleryGroups(
-			createBasesViewportGroups(this.data.groupedData),
+			createBasesViewportGroups(this.data.groupedData, {
+				app: this.app,
+				propertyLabel: groupProperty
+					? this.config.getDisplayName(groupProperty)
+					: '',
+				isCollapsed: (group) => this.isGroupCollapsed(group),
+				onToggleCollapsed: (group) => this.toggleGroupCollapsed(group),
+			}),
 			this.currentOptions,
 		);
 		if (render) {
@@ -253,6 +277,10 @@ export abstract class CardGalleryView<
 		return this.definition.columnGap;
 	}
 
+	get htmlExportRowGap(): number {
+		return this.definition.rowGap;
+	}
+
 	prepareHtmlExportData(): void {
 		this.refreshGalleryData(false);
 	}
@@ -309,6 +337,28 @@ export abstract class CardGalleryView<
 		card.element.dataset.mbvCardEditor = '';
 		this.cardContexts.set(card.element, context);
 		this.cardControllers.set(card.element, card);
+	}
+
+	private isGroupCollapsed(group: BasesEntryGroup): boolean {
+		const id = getBasesGroupId(group);
+		return id !== null && this.getGroupFolds().has(id);
+	}
+
+	private toggleGroupCollapsed(group: BasesEntryGroup): void {
+		const id = getBasesGroupId(group);
+		if (id === null) return;
+		const folds = this.getGroupFolds();
+		if (!folds.delete(id)) folds.add(id);
+		this.groupFoldController.saveGroupFolds?.();
+		const collapsed = folds.has(id);
+		this.groups = this.groups.map((current) =>
+			current.key === id ? { ...current, collapsed } : current,
+		);
+		this.renderer.setGroups(this.groups);
+	}
+
+	private getGroupFolds(): Set<string> {
+		return this.groupFoldController.getGroupFolds?.() ?? this.fallbackGroupFolds;
 	}
 
 	private readonly handleCardContextMenu = (event: MouseEvent): void => {

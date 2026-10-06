@@ -24,6 +24,7 @@ export interface ExportableCardGalleryView {
 	htmlExportGroups: readonly ViewportGridGroup<BasesEntry>[];
 	htmlExportMinimumItemWidth: number;
 	htmlExportColumnGap: number;
+	htmlExportRowGap: number;
 	prepareHtmlExportData?(): void;
 	createHtmlExportCard(entry: BasesEntry): ExportCardController;
 	prepareHtmlExportRoot?(root: HTMLElement): Promise<void> | void;
@@ -186,7 +187,7 @@ export class CardGalleryHtmlExporter {
 			let createdCards = 0;
 			for (const group of view.htmlExportGroups) {
 				if (group.showHeader) gridEl.append(createGroupHeader(exportDocument, group));
-				for (const entry of group.items) {
+				for (const [index, entry] of group.items.entries()) {
 					const controller = view.createHtmlExportCard(entry);
 					controllers.push(controller);
 					controller.setHtmlExportItemWidth?.(itemWidth);
@@ -202,6 +203,14 @@ export class CardGalleryHtmlExporter {
 						});
 						await yieldToMainThread(exportDocument);
 					}
+					const completesRow = (index + 1) % columns === 0;
+					const hasMoreRows = index + 1 < group.items.length;
+					if (completesRow && hasMoreRows) {
+						gridEl.append(createRowGap(exportDocument, view.htmlExportRowGap));
+					}
+				}
+				if (group.showHeader && group.items.length > 0) {
+					gridEl.append(createGroupFooter(exportDocument));
 				}
 			}
 
@@ -324,15 +333,32 @@ function createGroupHeader(
 	group: ViewportGridGroup<BasesEntry>,
 ): HTMLElement {
 	const headerEl = document.createElement('div');
-	headerEl.className = 'mbv-viewport-grid-group-header';
-	const labelEl = document.createElement('span');
-	labelEl.className = 'mbv-viewport-grid-group-label';
-	labelEl.textContent = group.label;
-	const countEl = document.createElement('span');
-	countEl.className = 'mbv-viewport-grid-group-count';
-	countEl.textContent = `${group.items.length} 项`;
-	headerEl.append(labelEl, countEl);
+	headerEl.className = 'mbv-viewport-grid-group-header bases-group-heading';
+	if (group.propertyLabel) {
+		const propertyEl = document.createElement('div');
+		propertyEl.className = 'bases-group-property';
+		propertyEl.textContent = group.propertyLabel;
+		headerEl.append(propertyEl);
+	}
+	const valueEl = document.createElement('div');
+	valueEl.className = 'bases-group-value';
+	if (group.renderLabel) group.renderLabel(valueEl);
+	else valueEl.textContent = group.label;
+	headerEl.append(valueEl);
 	return headerEl;
+}
+
+function createRowGap(document: Document, height: number): HTMLElement {
+	const gapEl = document.createElement('div');
+	gapEl.className = 'mbv-viewport-grid-row-gap';
+	gapEl.setCssProps({ '--mbv-viewport-grid-row-gap-height': `${height}px` });
+	return gapEl;
+}
+
+function createGroupFooter(document: Document): HTMLElement {
+	const footerEl = document.createElement('div');
+	footerEl.className = 'mbv-viewport-grid-group-footer';
+	return footerEl;
 }
 
 function getSlotClass(gridEl: HTMLElement): string {

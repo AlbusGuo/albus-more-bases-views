@@ -1,3 +1,5 @@
+import { setIcon } from 'obsidian';
+
 export interface ViewportGridItemController {
 	element: HTMLElement;
 }
@@ -6,6 +8,10 @@ export interface ViewportGridGroup<Item> {
 	key: string;
 	label: string;
 	showHeader: boolean;
+	propertyLabel?: string;
+	renderLabel?: (element: HTMLElement) => void;
+	collapsed?: boolean;
+	onToggleCollapsed?: () => void;
 	items: readonly Item[];
 }
 
@@ -41,8 +47,14 @@ interface GridSlot<Item, Controller> {
 
 interface GridGroupHeader {
 	element: HTMLElement;
-	labelEl: HTMLElement;
-	countEl: HTMLElement;
+	propertyEl: HTMLElement;
+	valueEl: HTMLElement;
+	iconEl: HTMLElement;
+	group: ViewportGridGroup<unknown>;
+}
+
+interface GridStructuralRow {
+	element: HTMLElement;
 }
 
 interface GridDimensions {
@@ -57,6 +69,19 @@ interface GridHeaderRow<Item> {
 	group: ViewportGridGroup<Item>;
 }
 
+interface GridGapRow<Item> {
+	kind: 'gap';
+	key: string;
+	group: ViewportGridGroup<Item>;
+	height: number;
+}
+
+interface GridFooterRow<Item> {
+	kind: 'footer';
+	key: string;
+	group: ViewportGridGroup<Item>;
+}
+
 interface GridItemsRow<Item> {
 	kind: 'items';
 	key: string;
@@ -64,7 +89,11 @@ interface GridItemsRow<Item> {
 	items: readonly Item[];
 }
 
-type GridRow<Item> = GridHeaderRow<Item> | GridItemsRow<Item>;
+type GridRow<Item> =
+	| GridHeaderRow<Item>
+	| GridItemsRow<Item>
+	| GridGapRow<Item>
+	| GridFooterRow<Item>;
 
 interface GridLayout<Item> extends GridDimensions {
 	rows: GridRow<Item>[];
@@ -73,7 +102,9 @@ interface GridLayout<Item> extends GridDimensions {
 	totalHeight: number;
 }
 
-const GROUP_HEADER_HEIGHT = 32;
+const GROUP_HEADER_HEIGHT = 42;
+const COLLAPSED_GROUP_HEADER_HEIGHT = 50;
+const GROUP_FOOTER_HEIGHT = 25;
 export const VIEWPORT_OVERSCAN_ROWS = 5;
 
 /**
@@ -88,6 +119,7 @@ export class ViewportGrid<
 	private readonly slots = new Map<string, GridSlot<Item, Controller>>();
 	private readonly attachedSlots = new Set<GridSlot<Item, Controller>>();
 	private readonly groupHeaders = new Map<string, GridGroupHeader>();
+	private readonly structuralRows = new Map<string, GridStructuralRow>();
 	private readonly scrollRoot: HTMLElement | null;
 	private readonly resizeObserver: ResizeObserver;
 	private readonly topSpacerEl: HTMLElement;
@@ -119,6 +151,7 @@ export class ViewportGrid<
 	private disposed = false;
 
 	constructor(private readonly options: ViewportGridOptions<Item, Controller>) {
+		options.containerEl.addClass('mbv-viewport-grid-managed');
 		this.scrollRoot = findScrollRoot(options.containerEl);
 		this.topSpacerEl = this.createSpacer('is-top');
 		this.bottomSpacerEl = this.createSpacer('is-bottom');
@@ -162,6 +195,8 @@ export class ViewportGrid<
 			this.viewportContentOffset = null;
 			this.measuredRowHeights.clear();
 			this.rowHeightLayoutKey = '';
+			for (const row of this.structuralRows.values()) row.element.remove();
+			this.structuralRows.clear();
 		}
 
 		const activeItems = new Map<string, Item>();
@@ -220,6 +255,8 @@ export class ViewportGrid<
 		for (const slot of this.slots.values()) this.disposeSlot(slot);
 		this.slots.clear();
 		this.groupHeaders.clear();
+		this.structuralRows.clear();
+		this.options.containerEl.removeClass('mbv-viewport-grid-managed');
 		this.options.containerEl.empty();
 	}
 
@@ -384,6 +421,8 @@ export class ViewportGrid<
 			this.rowHeightLayoutKey = rowHeightLayoutKey;
 			this.measuredRowHeights.clear();
 			this.layoutDirty = true;
+			for (const row of this.structuralRows.values()) row.element.remove();
+			this.structuralRows.clear();
 		}
 		if (Math.abs(dimensions.itemWidth - this.reportedItemWidth) >= 0.01) {
 			this.reportedItemWidth = dimensions.itemWidth;
@@ -441,7 +480,15 @@ export class ViewportGrid<
 			const row = layout.rows[rowIndex];
 			if (!row) continue;
 			if (row.kind === 'header') {
-				desiredChildren.push(this.getOrCreateGroupHeader(row.group).element);
+				const headerEl = this.getOrCreateGroupHeader(row.group).element;
+				headerEl.dataset.mbvGridRowKey = row.key;
+				desiredChildren.push(headerEl);
+				continue;
+			}
+			if (row.kind === 'gap' || row.kind === 'footer') {
+				const structuralEl = this.getOrCreateStructuralRow(row).element;
+				structuralEl.dataset.mbvGridRowKey = row.key;
+				desiredChildren.push(structuralEl);
 				continue;
 			}
 			for (const item of row.items) {
@@ -555,6 +602,8 @@ export class ViewportGrid<
 					group,
 				});
 			}
+			if (group.collapsed) continue;
+			const itemRowCount = Math.ceil(group.items.length / dimensions.columns);
 			for (let offset = 0; offset < group.items.length; offset += dimensions.columns) {
 				const rowIndex = Math.floor(offset / dimensions.columns);
 				rows.push({
@@ -563,23 +612,43 @@ export class ViewportGrid<
 					group,
 					items: group.items.slice(offset, offset + dimensions.columns),
 				});
+				if (rowIndex < itemRowCount - 1) {
+					rows.push({
+						kind: 'gap',
+						key: `gap:${group.key}:${rowIndex}`,
+						group,
+						height: this.options.rowGap ?? 0,
+					});
+				}
+			}
+			if (group.showHeader && group.items.length > 0) {
+				rows.push({
+					kind: 'footer',
+					key: `footer:${group.key}`,
+					group,
+				});
 			}
 		}
 
-		const rowGap = this.options.rowGap ?? 0;
 		const rowOffsets: number[] = [];
 		const rowHeights: number[] = [];
 		let offset = 0;
 		for (const row of rows) {
 			const estimatedHeight = row.kind === 'header'
-				? GROUP_HEADER_HEIGHT
-				: dimensions.estimatedItemRowHeight;
+				? row.group.collapsed || row.group.items.length === 0
+					? COLLAPSED_GROUP_HEADER_HEIGHT
+					: GROUP_HEADER_HEIGHT
+				: row.kind === 'gap'
+					? row.height
+					: row.kind === 'footer'
+						? GROUP_FOOTER_HEIGHT
+						: dimensions.estimatedItemRowHeight;
 			const height = this.measuredRowHeights.get(row.key) ?? estimatedHeight;
 			rowOffsets.push(offset);
 			rowHeights.push(height);
-			offset += height + rowGap;
+			offset += height;
 		}
-		const totalHeight = rows.length > 0 ? Math.max(0, offset - rowGap) : 0;
+		const totalHeight = offset;
 		return {
 			...dimensions,
 			rows,
@@ -643,16 +712,15 @@ export class ViewportGrid<
 		endRow: number,
 		layout: GridLayout<Item>,
 	): void {
-		const rowGap = this.options.rowGap ?? 0;
 		const topHeight = startRow > 0
-			? Math.max(0, (layout.rowOffsets[startRow] ?? 0) - rowGap)
+			? Math.max(0, layout.rowOffsets[startRow] ?? 0)
 			: 0;
 		let bottomHeight = 0;
 		if (endRow < layout.rows.length && endRow > 0) {
 			const previousRow = endRow - 1;
 			const renderedBottom = (layout.rowOffsets[previousRow] ?? 0) +
 				(layout.rowHeights[previousRow] ?? 0);
-			bottomHeight = Math.max(0, layout.totalHeight - renderedBottom - rowGap);
+			bottomHeight = Math.max(0, layout.totalHeight - renderedBottom);
 		}
 		this.setSpacerHeight(this.topSpacerEl, topHeight);
 		this.setSpacerHeight(this.bottomSpacerEl, bottomHeight);
@@ -689,7 +757,10 @@ export class ViewportGrid<
 			rowIndex += 1
 		) {
 			const row = layout.rows[rowIndex];
-			if (row?.kind === 'items' && !this.measuredRowHeights.has(row.key)) {
+			if (
+				(row?.kind === 'items' || row?.kind === 'header') &&
+				!this.measuredRowHeights.has(row.key)
+			) {
 				pendingRows.add(row.key);
 			}
 		}
@@ -698,7 +769,7 @@ export class ViewportGrid<
 		const itemRowHeights = new Map<string, number>();
 		for (const element of Array.from(
 			this.options.containerEl.querySelectorAll<HTMLElement>(
-				':scope > .mbv-viewport-grid-slot',
+				':scope > [data-mbv-grid-row-key]',
 			),
 		)) {
 			const rowKey = element.dataset.mbvGridRowKey;
@@ -759,15 +830,71 @@ export class ViewportGrid<
 		let header = this.groupHeaders.get(group.key);
 		if (!header) {
 			const element = this.options.containerEl.ownerDocument.createElement('div');
-			element.classList.add('mbv-viewport-grid-group-header');
-			const labelEl = element.createSpan('mbv-viewport-grid-group-label');
-			const countEl = element.createSpan('mbv-viewport-grid-group-count');
-			header = { element, labelEl, countEl };
+			element.classList.add(
+				'mbv-viewport-grid-group-header',
+				'bases-group-heading',
+				'mod-collapsible',
+			);
+			element.setAttribute('role', 'button');
+			element.tabIndex = 0;
+			const propertyEl = element.createDiv('bases-group-property');
+			const valueEl = element.createDiv('bases-group-value');
+			const iconEl = element.createDiv('collapse-indicator collapse-icon');
+			setIcon(iconEl, 'chevron-right');
+			header = {
+				element,
+				propertyEl,
+				valueEl,
+				iconEl,
+				group,
+			};
+			const toggle = (event: MouseEvent | KeyboardEvent): void => {
+				if (event.defaultPrevented) return;
+				if ('button' in event && event.button !== 0) return;
+				if ('key' in event && event.key !== 'Enter' && event.key !== ' ') return;
+				event.preventDefault();
+				header?.group.onToggleCollapsed?.();
+			};
+			element.addEventListener('click', toggle);
+			element.addEventListener('keydown', toggle);
 			this.groupHeaders.set(group.key, header);
 		}
-		header.labelEl.setText(group.label);
-		header.countEl.setText(`${group.items.length} 项`);
+		header.group = group;
+		header.propertyEl.setText(group.propertyLabel ?? '');
+		header.propertyEl.toggle(Boolean(group.propertyLabel));
+		header.valueEl.empty();
+		if (group.renderLabel) group.renderLabel(header.valueEl);
+		else header.valueEl.setText(group.label);
+		header.iconEl.classList.toggle('is-collapsed', Boolean(group.collapsed));
+		header.element.classList.toggle(
+			'is-collapsed',
+			Boolean(group.collapsed),
+		);
+		header.element.classList.toggle('is-empty-group', group.items.length === 0);
+		header.element.setAttribute('aria-expanded', String(!group.collapsed));
 		return header;
+	}
+
+	private getOrCreateStructuralRow(
+		row: GridGapRow<Item> | GridFooterRow<Item>,
+	): GridStructuralRow {
+		let structural = this.structuralRows.get(row.key);
+		if (!structural) {
+			const element = this.options.containerEl.ownerDocument.createElement('div');
+			element.classList.add(
+				row.kind === 'gap'
+					? 'mbv-viewport-grid-row-gap'
+					: 'mbv-viewport-grid-group-footer',
+			);
+			structural = { element };
+			this.structuralRows.set(row.key, structural);
+		}
+		if (row.kind === 'gap') {
+			structural.element.setCssProps({
+				'--mbv-viewport-grid-row-gap-height': `${row.height}px`,
+			});
+		}
+		return structural;
 	}
 
 	private createSpacer(positionClass: string): HTMLElement {
@@ -786,6 +913,9 @@ export class ViewportGrid<
 				!nextGroup ||
 				previousGroup.key !== nextGroup.key ||
 				previousGroup.showHeader !== nextGroup.showHeader ||
+				previousGroup.label !== nextGroup.label ||
+				previousGroup.propertyLabel !== nextGroup.propertyLabel ||
+				Boolean(previousGroup.collapsed) !== Boolean(nextGroup.collapsed) ||
 				previousGroup.items.length !== nextGroup.items.length
 			) return false;
 			for (let itemIndex = 0; itemIndex < nextGroup.items.length; itemIndex += 1) {
