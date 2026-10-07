@@ -1892,8 +1892,6 @@ button:not(.clickable-icon).mbv-paper-status-action:focus {
 	display: flex;
 	min-width: 0;
 	flex-direction: column;
-	content-visibility: auto;
-	contain-intrinsic-size: auto 480px;
 }
 
 .mbv-project-card {

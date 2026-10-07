@@ -125,6 +125,7 @@ export class ViewportGrid<
 	private readonly topSpacerEl: HTMLElement;
 	private readonly bottomSpacerEl: HTMLElement;
 	private readonly measuredRowHeights = new Map<string, number>();
+	private readonly pendingRowMeasurements = new Set<string>();
 	private readonly pendingSlotUpdates = new Set<GridSlot<Item, Controller>>();
 	private groups: readonly ViewportGridGroup<Item>[] = [];
 	private rowHeightLayoutKey = '';
@@ -157,19 +158,28 @@ export class ViewportGrid<
 		this.bottomSpacerEl = this.createSpacer('is-bottom');
 		this.resizeObserver = new ResizeObserver((entries) => {
 			let viewportChanged = false;
+			let gridGeometryChanged = false;
+			let rowChanged = false;
 			for (const entry of entries) {
 				if (entry.target === options.containerEl) {
 					this.handleGridResize(entry.contentRect.width);
+					gridGeometryChanged = true;
 				} else if (entry.target === this.scrollRoot) {
 					const height = entry.contentRect.height;
 					if (Math.abs(height - this.observedViewportHeight) >= 0.5) {
 						this.observedViewportHeight = height;
 						viewportChanged = true;
 					}
+				} else {
+					const rowKey = (entry.target as HTMLElement).dataset.mbvGridRowKey;
+					if (!rowKey) continue;
+					this.pendingRowMeasurements.add(rowKey);
+					rowChanged = true;
 				}
 			}
-			this.viewportContentOffset = null;
+			if (gridGeometryChanged || viewportChanged) this.viewportContentOffset = null;
 			if (viewportChanged) this.scheduleLayout();
+			if (rowChanged) this.scheduleRowMeasurement();
 		});
 		this.resizeObserver.observe(options.containerEl);
 		if (this.scrollRoot) this.resizeObserver.observe(this.scrollRoot);
@@ -194,6 +204,7 @@ export class ViewportGrid<
 		if (!stable) {
 			this.viewportContentOffset = null;
 			this.measuredRowHeights.clear();
+			this.pendingRowMeasurements.clear();
 			this.rowHeightLayoutKey = '';
 			for (const row of this.structuralRows.values()) row.element.remove();
 			this.structuralRows.clear();
@@ -323,7 +334,9 @@ export class ViewportGrid<
 			this.layoutDirty = true;
 			this.rowHeightLayoutKey = '';
 			this.measuredRowHeights.clear();
+			this.pendingRowMeasurements.clear();
 			this.releaseResizeFreeze();
+			this.scheduleRowMeasurement();
 			this.scheduleLayout();
 		}, this.options.resizeSettleDelay ?? 100);
 	}
@@ -383,18 +396,14 @@ export class ViewportGrid<
 	private flushSlotUpdates(ownerWindow: Window): void {
 		if (this.disposed) return;
 		const startedAt = ownerWindow.performance.now();
-		let updated = false;
 		for (const slot of this.pendingSlotUpdates) {
 			this.pendingSlotUpdates.delete(slot);
 			if (!this.slots.has(slot.key) || !slot.element.isConnected) continue;
 			this.options.update(slot.controller, slot.item);
 			slot.dirty = false;
-			updated = true;
+			const rowKey = slot.element.dataset.mbvGridRowKey;
+			if (rowKey) this.pendingRowMeasurements.add(rowKey);
 			if (ownerWindow.performance.now() - startedAt >= 6) break;
-		}
-		if (updated) {
-			this.measuredRowHeights.clear();
-			this.layoutDirty = true;
 		}
 		if (this.pendingSlotUpdates.size > 0) this.scheduleSlotUpdates();
 		else {
@@ -420,6 +429,7 @@ export class ViewportGrid<
 		if (rowHeightLayoutKey !== this.rowHeightLayoutKey) {
 			this.rowHeightLayoutKey = rowHeightLayoutKey;
 			this.measuredRowHeights.clear();
+			this.pendingRowMeasurements.clear();
 			this.layoutDirty = true;
 			for (const row of this.structuralRows.values()) row.element.remove();
 			this.structuralRows.clear();
@@ -513,11 +523,13 @@ export class ViewportGrid<
 		for (const slot of this.attachedSlots) {
 			if (desiredSlots.has(slot)) continue;
 			this.attachedSlots.delete(slot);
+			this.resizeObserver.unobserve(slot.element);
 			this.options.onDetach?.(slot.controller);
 		}
 		for (const slot of desiredSlots) {
 			if (this.attachedSlots.has(slot)) continue;
 			this.attachedSlots.add(slot);
+			this.resizeObserver.observe(slot.element);
 			this.options.onAttach?.(slot.controller);
 		}
 		this.pruneDetachedSlots();
@@ -759,7 +771,10 @@ export class ViewportGrid<
 			const row = layout.rows[rowIndex];
 			if (
 				(row?.kind === 'items' || row?.kind === 'header') &&
-				!this.measuredRowHeights.has(row.key)
+				(
+					!this.measuredRowHeights.has(row.key) ||
+					this.pendingRowMeasurements.has(row.key)
+				)
 			) {
 				pendingRows.add(row.key);
 			}
@@ -784,8 +799,13 @@ export class ViewportGrid<
 		for (const rowKey of pendingRows) {
 			const measuredHeight = itemRowHeights.get(rowKey) ?? 0;
 			if (measuredHeight <= 0) continue;
+			const previousHeight = this.measuredRowHeights.get(rowKey);
 			this.measuredRowHeights.set(rowKey, measuredHeight);
-			changed = true;
+			this.pendingRowMeasurements.delete(rowKey);
+			if (
+				previousHeight === undefined ||
+				Math.abs(previousHeight - measuredHeight) >= 0.5
+			) changed = true;
 		}
 		if (changed) {
 			this.layoutDirty = true;
@@ -933,6 +953,7 @@ export class ViewportGrid<
 
 	private disposeSlot(slot: GridSlot<Item, Controller>): void {
 		this.pendingSlotUpdates.delete(slot);
+		this.resizeObserver.unobserve(slot.element);
 		if (this.attachedSlots.delete(slot)) {
 			this.options.onDetach?.(slot.controller);
 		}
